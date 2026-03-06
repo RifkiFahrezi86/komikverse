@@ -228,17 +228,29 @@ export async function searchAllProviders(keyword: string): Promise<ApiResponse<C
 }
 
 export async function getComicDetail(slug: string): Promise<ApiResponse<ComicDetail>> {
-  // Try current provider first, then fallback to others
+  // Try all providers, prefer one with the most chapters
   const providerOrder = [currentProvider, ...PROVIDERS.map(p => p.id).filter(id => id !== currentProvider)];
+  let bestResult: ApiResponse<ComicDetail> | null = null;
+  let bestProvider = "";
   for (const pid of providerOrder) {
     try {
       const res = await fetchApiWithProvider<ComicDetail>(`/detail/${slug}`, pid);
       if (res.data) {
         res.data = normalizeDetail(res.data);
-        setProvider(pid);
-        return res;
+        const chapters = res.data.chapters?.length || 0;
+        const bestChapters = bestResult?.data?.chapters?.length || 0;
+        if (!bestResult || chapters > bestChapters) {
+          bestResult = res;
+          bestProvider = pid;
+        }
+        // If we found chapters, no need to try more providers
+        if (chapters > 0) break;
       }
     } catch { /* try next */ }
+  }
+  if (bestResult) {
+    if (bestProvider) setProvider(bestProvider);
+    return bestResult;
   }
   throw new Error("Comic not found in any provider");
 }
