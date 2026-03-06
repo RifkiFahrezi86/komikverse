@@ -227,41 +227,28 @@ export async function searchAllProviders(keyword: string): Promise<ApiResponse<C
   return { status: "Ok", data };
 }
 
-function normalizeStatus(s?: string): string | undefined {
-  if (!s || s === "Unknown") return undefined;
-  const lower = s.toLowerCase();
-  if (lower === "end" || lower === "tamat" || lower === "completed") return "Completed";
-  if (lower === "ongoing") return "Ongoing";
-  if (lower === "hiatus") return "Hiatus";
-  return s;
-}
-
 export async function getComicDetail(slug: string): Promise<ApiResponse<ComicDetail>> {
-  // Try all providers in parallel, pick best by chapters, merge status
-  const results = await Promise.allSettled(
-    PROVIDERS.map(async (p) => {
-      const res = await fetchApiWithProvider<ComicDetail>(`/detail/${slug}`, p.id);
-      if (res.data) res.data = normalizeDetail(res.data);
-      return { res, provider: p.id };
-    })
-  );
+  // Try all providers, prefer one with the most chapters
+  const providerOrder = [currentProvider, ...PROVIDERS.map(p => p.id).filter(id => id !== currentProvider)];
   let bestResult: ApiResponse<ComicDetail> | null = null;
   let bestProvider = "";
-  let fallbackStatus = "";
-  for (const r of results) {
-    if (r.status !== "fulfilled" || !r.value.res.data) continue;
-    const d = r.value.res.data;
-    const chapters = d.chapters?.length || 0;
-    const bestChapters = bestResult?.data?.chapters?.length || 0;
-    const validStatus = normalizeStatus(d.status);
-    if (validStatus && !fallbackStatus) fallbackStatus = validStatus;
-    if (!bestResult || chapters > bestChapters) {
-      bestResult = r.value.res;
-      bestProvider = r.value.provider;
-    }
+  for (const pid of providerOrder) {
+    try {
+      const res = await fetchApiWithProvider<ComicDetail>(`/detail/${slug}`, pid);
+      if (res.data) {
+        res.data = normalizeDetail(res.data);
+        const chapters = res.data.chapters?.length || 0;
+        const bestChapters = bestResult?.data?.chapters?.length || 0;
+        if (!bestResult || chapters > bestChapters) {
+          bestResult = res;
+          bestProvider = pid;
+        }
+        // If we found chapters, no need to try more providers
+        if (chapters > 0) break;
+      }
+    } catch { /* try next */ }
   }
   if (bestResult) {
-    bestResult.data.status = normalizeStatus(bestResult.data.status) || fallbackStatus || bestResult.data.status;
     if (bestProvider) setProvider(bestProvider);
     return bestResult;
   }

@@ -5,6 +5,7 @@ import type { Comic } from "../lib/api";
 import { getPopular, getLatest, getRecommended } from "../lib/api";
 import ComicCard, { UpdateCard, RecommendCard } from "../components/ComicCard";
 import ComicCardSkeleton, { UpdateCardSkeleton, RecommendCardSkeleton } from "../components/ComicCardSkeleton";
+import AdSlot from "../components/AdSlot";
 
 const TYPE_TABS = [
   { key: "all", label: "Semua" },
@@ -131,6 +132,9 @@ export default function HomePage() {
     <div className="pt-16 pb-20 md:pb-12">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
 
+        {/* Ad Slot - Home Top */}
+        <AdSlot name="home-top" className="mb-6 rounded-xl overflow-hidden" />
+
         {/* ─── Rekomendasi Section ─── */}
         <section className="mb-10">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
@@ -197,6 +201,7 @@ export default function HomePage() {
         </section>
 
         {/* ─── Populer Section ─── */}
+        <AdSlot name="home-mid" className="mb-6 rounded-xl overflow-hidden" />
         <section className="mb-10">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
             <h2 className="font-display text-lg sm:text-xl text-white/85 flex items-center gap-2.5 font-bold">

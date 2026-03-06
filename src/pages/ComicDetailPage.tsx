@@ -16,6 +16,8 @@ import {
 import type { ComicDetail } from "../lib/api";
 import { getComicDetail } from "../lib/api";
 import { addBookmark, removeBookmark, isBookmarked } from "../lib/bookmark";
+import CommentSection from "../components/CommentSection";
+import AdSlot from "../components/AdSlot";
 
 function extractChapterSlug(href: string): string {
   return href.replace(/^\/(chapter)\//, "").replace(/^\//, "");
@@ -231,6 +233,9 @@ export default function ComicDetailPage() {
         </div>
       </div>
 
+      {/* Ad Slot - Before Chapters */}
+      <AdSlot name="detail-before-chapters" className="mb-4 rounded-xl overflow-hidden" />
+
       {/* Chapter Section */}
       <section>
         <div className="rounded-xl bg-[#12121a] border border-white/[0.04] p-4 mb-3">
@@ -309,6 +314,12 @@ export default function ComicDetailPage() {
           );
         })()}
       </section>
+
+      {/* Ad Slot - Sidebar */}
+      <AdSlot name="detail-sidebar" className="mt-4 rounded-xl overflow-hidden" />
+
+      {/* Comment Section */}
+      {slug && <CommentSection comicSlug={slug} />}
     </div>
   );
 }

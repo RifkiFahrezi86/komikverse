@@ -1,14 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, X, Compass, Library, BookOpen, Home, Bookmark } from "lucide-react";
+import { Search, X, Compass, Library, BookOpen, Home, Bookmark, LogIn, LogOut, Shield, User as UserIcon, KeyRound } from "lucide-react";
+import { useAuth } from "../lib/auth";
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const inputRef = useRef<HTMLInputElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const { user, logout, isAdmin } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -31,6 +35,17 @@ export default function Navbar() {
   useEffect(() => {
     if (searchOpen) inputRef.current?.focus();
   }, [searchOpen]);
+
+  // Close user menu on click outside
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    if (userMenuOpen) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [userMenuOpen]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,17 +99,69 @@ export default function Navbar() {
               </div>
             </div>
 
-            {/* Search Button */}
-            <button
-              onClick={() => setSearchOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[#8e8ea0] hover:text-white hover:border-white/[0.1] transition-all text-sm"
-            >
-              <Search size={14} />
-              <span className="hidden sm:inline font-body">Cari...</span>
-              <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-white/[0.06] text-[10px] font-mono text-[#5c5c6e]">
-                Ctrl K
-              </kbd>
-            </button>
+            {/* Search + Auth */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[#8e8ea0] hover:text-white hover:border-white/[0.1] transition-all text-sm"
+              >
+                <Search size={14} />
+                <span className="hidden sm:inline font-body">Cari...</span>
+                <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-white/[0.06] text-[10px] font-mono text-[#5c5c6e]">
+                  Ctrl K
+                </kbd>
+              </button>
+
+              {/* User menu */}
+              {user ? (
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                    className="w-8 h-8 rounded-full bg-[#f97316]/20 flex items-center justify-center text-[#f97316] text-xs font-bold font-body hover:bg-[#f97316]/30 transition-colors"
+                  >
+                    {user.username.charAt(0).toUpperCase()}
+                  </button>
+                  {userMenuOpen && (
+                    <div className="absolute top-full right-0 mt-1 py-1 w-44 rounded-lg bg-[#16161f] border border-white/[0.06] shadow-xl z-50">
+                      <div className="px-3 py-2 border-b border-white/[0.04]">
+                        <p className="text-xs font-body font-medium text-white/85 truncate">{user.username}</p>
+                        <p className="text-[10px] font-body text-[#5c5c6e]">{user.email}</p>
+                      </div>
+                      {isAdmin && (
+                        <Link
+                          to="/admin"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-2 px-3 py-2 text-sm font-body text-[#8e8ea0] hover:text-white hover:bg-white/[0.04] transition-colors"
+                        >
+                          <Shield size={14} /> Admin Panel
+                        </Link>
+                      )}
+                      <Link
+                        to="/change-password"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2 px-3 py-2 text-sm font-body text-[#8e8ea0] hover:text-white hover:bg-white/[0.04] transition-colors"
+                      >
+                        <KeyRound size={14} /> Ganti Password
+                      </Link>
+                      <button
+                        onClick={() => { logout(); setUserMenuOpen(false); navigate("/"); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm font-body text-[#8e8ea0] hover:text-red-400 hover:bg-white/[0.04] transition-colors"
+                      >
+                        <LogOut size={14} /> Keluar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  to="/login"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f97316] text-white text-sm font-body font-medium hover:bg-[#ea580c] transition-colors"
+                >
+                  <LogIn size={14} />
+                  <span className="hidden sm:inline">Masuk</span>
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       </nav>
@@ -106,6 +173,12 @@ export default function Navbar() {
           <MobileNavItem to="/terbaru" icon={<Compass size={20} />} label="Explore" active={isActive("/terbaru")} />
           <MobileNavItem to="/bookmark" icon={<Bookmark size={20} />} label="Library" active={isActive("/bookmark")} />
           <MobileNavItem to="/genre" icon={<Library size={20} />} label="Genre" active={isActive("/genre")} />
+          <MobileNavItem
+            to={user ? (isAdmin ? "/admin" : "/bookmark") : "/login"}
+            icon={<UserIcon size={20} />}
+            label={user ? user.username.slice(0, 6) : "Masuk"}
+            active={isActive("/login") || isActive("/admin")}
+          />
         </div>
       </div>
 

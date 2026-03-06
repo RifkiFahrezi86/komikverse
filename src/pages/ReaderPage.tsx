@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { Chapter, ChapterData } from "../lib/api";
 import { getChapterImages } from "../lib/api";
+import AdSlot from "../components/AdSlot";
 
 function extractChapterSlug(href: string): string {
   return href.replace(/^\/(chapter)\//, "").replace(/^\//, "");
@@ -189,16 +190,25 @@ export default function ReaderPage() {
       <div className="pt-12">
         {viewMode === "long-strip" ? (
           <div className="max-w-3xl mx-auto">
+            {/* Ad Slot - Reader Top */}
+            <AdSlot name="reader-top" className="mb-2" />
             {panels.map((src, i) => (
-              <img
-                key={i}
-                src={src}
-                alt={`Panel ${i + 1}`}
-                loading="lazy"
-                className="w-full block"
-                referrerPolicy="no-referrer"
-              />
+              <React.Fragment key={i}>
+                <img
+                  src={src}
+                  alt={`Panel ${i + 1}`}
+                  loading="lazy"
+                  className="w-full block"
+                  referrerPolicy="no-referrer"
+                />
+                {/* Ad between images every 10 panels */}
+                {(i + 1) % 10 === 0 && i < panels.length - 1 && (
+                  <AdSlot name="reader-between" className="my-2" />
+                )}
+              </React.Fragment>
             ))}
+            {/* Ad Slot - Reader Bottom */}
+            <AdSlot name="reader-bottom" className="mt-2" />
           </div>
         ) : (
           <div className="flex items-center justify-center min-h-screen px-4">
