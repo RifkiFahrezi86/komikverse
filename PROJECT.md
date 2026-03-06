@@ -86,7 +86,7 @@ KOMIK/
 ### API yang Dipakai (Saat Ini)
 ```env
 # .env.local
-VITE_API_BASE=https://api-manga-five.vercel.app
+VITE_API_BASE=https://komikverse-api-amber.vercel.app/api
 VITE_API_PROVIDER=shinigami
 ```
 

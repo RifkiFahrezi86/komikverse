@@ -157,79 +157,134 @@ async function fetchApi<T>(endpoint: string): Promise<ApiResponse<T>> {
   }
 }
 
-export async function getLatest(page = 1): Promise<ApiResponse<Comic[]>> {
-  const res = await fetchApi<Comic[]>(`/terbaru?page=${page}`);
-  res.data = (res.data || []).map(normalizeComic);
-  return res;
+async function fetchApiWithProvider<T>(endpoint: string, provider: string): Promise<ApiResponse<T>> {
+  const url = buildUrl(endpoint, provider);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  try {
+    const authHeaders = await generateAuthHeaders();
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { ...authHeaders },
+    });
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    return res.json();
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
-export async function getPopular(): Promise<ApiResponse<Comic[]>> {
-  const res = await fetchApi<Comic[]>("/popular");
-  res.data = (res.data || []).map(normalizeComic);
-  return res;
-}
-
-export async function getRecommended(): Promise<ApiResponse<Comic[]>> {
-  const res = await fetchApi<Comic[]>("/recommended");
-  res.data = (res.data || []).map(normalizeComic);
-  return res;
-}
-
-export async function searchComics(keyword: string): Promise<ApiResponse<Comic[]>> {
-  const res = await fetchApi<Comic[]>(`/search?keyword=${encodeURIComponent(keyword)}`);
-  res.data = (res.data || []).map(normalizeComic);
-  return res;
-}
-
-export async function searchAllProviders(keyword: string): Promise<ApiResponse<Comic[]>> {
+// Fetch from all providers and merge results with dedup
+async function fetchAllProviders(endpoint: string): Promise<Comic[]> {
   const results = await Promise.allSettled(
     PROVIDERS.map(async (p) => {
-      const url = buildUrl(`/search?keyword=${encodeURIComponent(keyword)}`, p.id);
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
       try {
-        const authHeaders = await generateAuthHeaders();
-        const res = await fetch(url, {
-          signal: controller.signal,
-          headers: { ...authHeaders },
-        });
-        if (!res.ok) return [];
-        const data: ApiResponse<Comic[]> = await res.json();
-        return (data.data || []).map((raw) => ({ ...normalizeComic(raw), _provider: p.id }));
+        const res = await fetchApiWithProvider<Comic[]>(endpoint, p.id);
+        return (res.data || []).map((raw) => ({ ...normalizeComic(raw), _provider: p.id }));
       } catch {
         return [];
-      } finally {
-        clearTimeout(timeoutId);
       }
     })
   );
-
-  const allComics: Comic[] = [];
+  const all: Comic[] = [];
+  const seen = new Set<string>();
   for (const result of results) {
     if (result.status === "fulfilled") {
-      allComics.push(...result.value);
+      for (const comic of result.value) {
+        const key = comic.title.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (!seen.has(key)) {
+          seen.add(key);
+          all.push(comic);
+        }
+      }
     }
   }
+  return all;
+}
 
-  return { status: "Ok", data: allComics };
+export async function getLatest(page = 1): Promise<ApiResponse<Comic[]>> {
+  const data = await fetchAllProviders(`/terbaru?page=${page}`);
+  return { status: "Ok", data };
+}
+
+export async function getPopular(): Promise<ApiResponse<Comic[]>> {
+  const data = await fetchAllProviders("/popular");
+  return { status: "Ok", data };
+}
+
+export async function getRecommended(): Promise<ApiResponse<Comic[]>> {
+  const data = await fetchAllProviders("/recommended");
+  return { status: "Ok", data };
+}
+
+export async function searchComics(keyword: string): Promise<ApiResponse<Comic[]>> {
+  const data = await fetchAllProviders(`/search?keyword=${encodeURIComponent(keyword)}`);
+  return { status: "Ok", data };
+}
+
+export async function searchAllProviders(keyword: string): Promise<ApiResponse<Comic[]>> {
+  const data = await fetchAllProviders(`/search?keyword=${encodeURIComponent(keyword)}`);
+  return { status: "Ok", data };
 }
 
 export async function getComicDetail(slug: string): Promise<ApiResponse<ComicDetail>> {
-  const res = await fetchApi<ComicDetail>(`/detail/${slug}`);
-  if (res.data) res.data = normalizeDetail(res.data);
-  return res;
+  // Try current provider first, then fallback to others
+  const providerOrder = [currentProvider, ...PROVIDERS.map(p => p.id).filter(id => id !== currentProvider)];
+  for (const pid of providerOrder) {
+    try {
+      const res = await fetchApiWithProvider<ComicDetail>(`/detail/${slug}`, pid);
+      if (res.data) {
+        res.data = normalizeDetail(res.data);
+        setProvider(pid);
+        return res;
+      }
+    } catch { /* try next */ }
+  }
+  throw new Error("Comic not found in any provider");
 }
 
 export async function getChapterImages(slug: string): Promise<ApiResponse<ChapterData[]>> {
-  return fetchApi(`/read/${slug}`);
+  // Try current provider first, then fallback to others
+  const providerOrder = [currentProvider, ...PROVIDERS.map(p => p.id).filter(id => id !== currentProvider)];
+  for (const pid of providerOrder) {
+    try {
+      const res = await fetchApiWithProvider<ChapterData[]>(`/read/${slug}`, pid);
+      if (res.data && res.data.length > 0) return res;
+    } catch { /* try next */ }
+  }
+  throw new Error("Chapter not found in any provider");
 }
 
 export async function getGenres(): Promise<ApiResponse<Genre[]>> {
-  return fetchApi("/genre");
+  // Merge genres from all providers
+  const results = await Promise.allSettled(
+    PROVIDERS.map(async (p) => {
+      try {
+        const res = await fetchApiWithProvider<Genre[]>("/genre", p.id);
+        return res.data || [];
+      } catch {
+        return [];
+      }
+    })
+  );
+  const seen = new Set<string>();
+  const merged: Genre[] = [];
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      for (const g of result.value) {
+        const key = g.title.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          merged.push(g);
+        }
+      }
+    }
+  }
+  merged.sort((a, b) => a.title.localeCompare(b.title));
+  return { status: "Ok", data: merged };
 }
 
 export async function getComicsByGenre(slug: string, page = 1): Promise<ApiResponse<Comic[]>> {
-  const res = await fetchApi<Comic[]>(`/genre/${slug}?page=${page}`);
-  res.data = (res.data || []).map(normalizeComic);
-  return res;
+  const data = await fetchAllProviders(`/genre/${slug}?page=${page}`);
+  return { status: "Ok", data };
 }
