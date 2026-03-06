@@ -2,6 +2,27 @@ const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9hcGktbWFuZ2Et
 const DEFAULT_PROVIDER = import.meta.env.VITE_API_PROVIDER || "shinigami";
 const API_SECRET = import.meta.env.VITE_API_SECRET || "";
 
+// Dynamic provider management
+let currentProvider = (() => {
+  try { return localStorage.getItem("comic-provider") || DEFAULT_PROVIDER; }
+  catch { return DEFAULT_PROVIDER; }
+})();
+
+export const PROVIDERS = [
+  { id: "shinigami", name: "Shinigami", icon: "🔮" },
+  { id: "komiku", name: "Komiku", icon: "📚" },
+  { id: "kiryuu", name: "Kiryuu", icon: "⚔️" },
+] as const;
+
+export function getProvider(): string {
+  return currentProvider;
+}
+
+export function setProvider(provider: string) {
+  currentProvider = provider;
+  try { localStorage.setItem("comic-provider", provider); } catch {}
+}
+
 // Generate HMAC token for API authentication
 async function generateAuthHeaders(): Promise<Record<string, string>> {
   if (!API_SECRET) return {};
@@ -113,7 +134,7 @@ function normalizeChapter(raw: any): Chapter {
   };
 }
 
-function buildUrl(endpoint: string, provider = DEFAULT_PROVIDER): string {
+function buildUrl(endpoint: string, provider = currentProvider): string {
   const separator = endpoint.includes("?") ? "&" : "?";
   return `${API_BASE}${endpoint}${separator}provider=${provider}`;
 }

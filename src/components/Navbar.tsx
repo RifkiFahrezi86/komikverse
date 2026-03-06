@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, X, Compass, Library, BookOpen, Home, Bookmark } from "lucide-react";
+import { Search, X, Compass, Library, BookOpen, Home, Bookmark, Database } from "lucide-react";
+import { PROVIDERS, getProvider, setProvider } from "../lib/api";
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -9,6 +10,13 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [provider, setProviderState] = useState(getProvider());
+
+  const handleProviderChange = (id: string) => {
+    setProvider(id);
+    setProviderState(id);
+    window.location.href = "/";
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -82,6 +90,30 @@ export default function Navbar() {
                   <Link to="/type/manhua" className="block px-3 py-2 text-sm font-body text-[#8e8ea0] hover:text-white hover:bg-white/[0.04] transition-colors">Manhua</Link>
                 </div>
               </div>
+              {/* Source/Provider dropdown */}
+              <div className="relative group">
+                <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-body font-medium text-[#8e8ea0] hover:text-white transition-colors rounded-lg hover:bg-white/[0.04]">
+                  <Database size={14} />
+                  {PROVIDERS.find(p => p.id === provider)?.name || "Source"}
+                </button>
+                <div className="absolute top-full right-0 mt-1 py-1 w-40 rounded-lg bg-[#16161f] border border-white/[0.06] shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150">
+                  {PROVIDERS.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => handleProviderChange(p.id)}
+                      className={`w-full text-left px-3 py-2 text-sm font-body transition-colors flex items-center gap-2 ${
+                        provider === p.id
+                          ? "text-[#f97316] bg-[#f97316]/[0.06]"
+                          : "text-[#8e8ea0] hover:text-white hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      <span>{p.icon}</span>
+                      <span>{p.name}</span>
+                      {provider === p.id && <span className="ml-auto text-xs">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Search Button */}
@@ -106,6 +138,18 @@ export default function Navbar() {
           <MobileNavItem to="/terbaru" icon={<Compass size={20} />} label="Explore" active={isActive("/terbaru")} />
           <MobileNavItem to="/bookmark" icon={<Bookmark size={20} />} label="Library" active={isActive("/bookmark")} />
           <MobileNavItem to="/genre" icon={<Library size={20} />} label="Genre" active={isActive("/genre")} />
+          {/* Mobile provider cycler */}
+          <button
+            onClick={() => {
+              const idx = PROVIDERS.findIndex(p => p.id === provider);
+              const next = PROVIDERS[(idx + 1) % PROVIDERS.length];
+              handleProviderChange(next.id);
+            }}
+            className="flex flex-col items-center gap-0.5 px-2 text-[#8e8ea0]"
+          >
+            <Database size={20} />
+            <span className="text-[10px] font-body">{PROVIDERS.find(p => p.id === provider)?.name}</span>
+          </button>
         </div>
       </div>
 
