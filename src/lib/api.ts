@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9hcGktbWFuZ2EtZml2ZS52ZXJjZWwuYXBw");
+const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9rb21pa3ZlcnNlLWFwaS1hbWJlci52ZXJjZWwuYXBwL2FwaQ==");
 const DEFAULT_PROVIDER = import.meta.env.VITE_API_PROVIDER || "shinigami";
 const API_SECRET = import.meta.env.VITE_API_SECRET || "";
 
