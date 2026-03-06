@@ -47,6 +47,7 @@ export interface Comic {
   genre?: string;
   status?: string;
   author?: string;
+  _provider?: string;
 }
 
 export interface ComicDetail {
@@ -178,6 +179,39 @@ export async function searchComics(keyword: string): Promise<ApiResponse<Comic[]
   const res = await fetchApi<Comic[]>(`/search?keyword=${encodeURIComponent(keyword)}`);
   res.data = (res.data || []).map(normalizeComic);
   return res;
+}
+
+export async function searchAllProviders(keyword: string): Promise<ApiResponse<Comic[]>> {
+  const results = await Promise.allSettled(
+    PROVIDERS.map(async (p) => {
+      const url = buildUrl(`/search?keyword=${encodeURIComponent(keyword)}`, p.id);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      try {
+        const authHeaders = await generateAuthHeaders();
+        const res = await fetch(url, {
+          signal: controller.signal,
+          headers: { ...authHeaders },
+        });
+        if (!res.ok) return [];
+        const data: ApiResponse<Comic[]> = await res.json();
+        return (data.data || []).map((raw) => ({ ...normalizeComic(raw), _provider: p.id }));
+      } catch {
+        return [];
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    })
+  );
+
+  const allComics: Comic[] = [];
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      allComics.push(...result.value);
+    }
+  }
+
+  return { status: "Ok", data: allComics };
 }
 
 export async function getComicDetail(slug: string): Promise<ApiResponse<ComicDetail>> {

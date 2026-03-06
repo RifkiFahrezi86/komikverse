@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { ImageOff } from "lucide-react";
 import type { Comic } from "../lib/api";
+import { setProvider, PROVIDERS } from "../lib/api";
 
 export function extractSlug(href: string): string {
   return href.replace(/^\/(manga|series)\//, "").replace(/^\//, "");
@@ -37,10 +38,16 @@ function useImageRetry(src: string) {
 export default function ComicCard({ comic }: { comic: Comic }) {
   const slug = extractSlug(comic.href);
   const { imgRef, imgError, imgLoaded, setImgLoaded, handleImgError } = useImageRetry(comic.image);
+  const providerInfo = comic._provider ? PROVIDERS.find((p) => p.id === comic._provider) : null;
+
+  const handleClick = () => {
+    if (comic._provider) setProvider(comic._provider);
+  };
 
   return (
     <Link
       to={`/komik/${slug}`}
+      onClick={handleClick}
       className="block rounded-lg overflow-hidden bg-[#12121a] border border-white/[0.04] group hover:border-white/[0.08] transition-all"
     >
       <div className="relative aspect-[3/4.2] overflow-hidden bg-[#1a1a24]">
@@ -74,6 +81,12 @@ export default function ComicCard({ comic }: { comic: Comic }) {
         {comic.chapter && (
           <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-body font-semibold rounded bg-black/70 text-white/80">
             {comic.chapter}
+          </span>
+        )}
+
+        {providerInfo && (
+          <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 text-[9px] font-body font-semibold rounded bg-black/70 text-white/60 flex items-center gap-0.5">
+            <span>{providerInfo.icon}</span> {providerInfo.name}
           </span>
         )}
       </div>
