@@ -18,7 +18,7 @@ export default function Footer() {
           <div className="flex items-center gap-4 text-[11px] text-[#5a5a6a] font-body">
             <span>
               Dibuat oleh{" "}
-              <span className="text-[#f97316]">Rifki Nur Fahrezi Ahmad</span>
+              <span className="text-[#f97316]">Rifki Fahrezi</span>
             </span>
             <span className="text-[#2a2a3a]">|</span>
             <a
