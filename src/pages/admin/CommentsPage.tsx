@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Trash2, Loader2, MessageSquare, Pencil, Plus, Database, X, Check, Search } from "lucide-react";
+import { Trash2, Loader2, MessageSquare, Pencil, Plus, Database, X, Check, Search, CheckCircle2, EyeOff } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9rb21pa3ZlcnNlLWFwaS1hbWJlci52ZXJjZWwuYXBwL2FwaQ==");
@@ -40,6 +40,7 @@ export default function AdminCommentsPage() {
   const [seedLoading, setSeedLoading] = useState(false);
   const [seedMsg, setSeedMsg] = useState("");
   const [filter, setFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
@@ -79,6 +80,17 @@ export default function AdminCommentsPage() {
         body: JSON.stringify({ id, content: editContent }),
       });
       setEditId(null);
+      loadComments();
+    } finally { setActionId(null); }
+  };
+
+  const updateStatus = async (id: number, status: string) => {
+    setActionId(id);
+    try {
+      await fetch(`${ADMIN_BASE}/admin/comments`, {
+        method: "PATCH", headers,
+        body: JSON.stringify({ id, status }),
+      });
       loadComments();
     } finally { setActionId(null); }
   };
@@ -129,9 +141,11 @@ export default function AdminCommentsPage() {
     } finally { setSeedLoading(false); }
   };
 
-  const filtered = filter
-    ? comments.filter((c) => c.username.toLowerCase().includes(filter.toLowerCase()) || c.comic_slug.toLowerCase().includes(filter.toLowerCase()) || c.content.toLowerCase().includes(filter.toLowerCase()))
-    : comments;
+  const filtered = comments.filter((c) => {
+    if (statusFilter !== "all" && c.status !== statusFilter) return false;
+    if (filter && !c.username.toLowerCase().includes(filter.toLowerCase()) && !c.comic_slug.toLowerCase().includes(filter.toLowerCase()) && !c.content.toLowerCase().includes(filter.toLowerCase())) return false;
+    return true;
+  });
 
   return (
     <div>
@@ -158,6 +172,24 @@ export default function AdminCommentsPage() {
           {seedMsg}
         </div>
       )}
+
+      {/* Status Filter Tabs */}
+      <div className="flex items-center gap-2 mb-3">
+        {(["all", "approved", "pending", "hidden"] as const).map((s) => {
+          const count = s === "all" ? comments.length : comments.filter((c) => c.status === s).length;
+          return (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-body transition-colors ${
+                statusFilter === s ? "bg-[#f97316] text-white" : "bg-white/[0.04] text-[#8e8ea0] hover:text-white"
+              }`}
+            >
+              {s === "all" ? "Semua" : s === "approved" ? "Disetujui" : s === "pending" ? "Menunggu" : "Tersembunyi"} ({count})
+            </button>
+          );
+        })}
+      </div>
 
       {/* Search */}
       <div className="relative mb-4">
@@ -268,6 +300,16 @@ export default function AdminCommentsPage() {
                     <Loader2 size={14} className="text-[#f97316] animate-spin" />
                   ) : editId !== c.id ? (
                     <>
+                      {c.status !== "approved" && (
+                        <button onClick={() => updateStatus(c.id, "approved")} title="Setujui" className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors">
+                          <CheckCircle2 size={14} />
+                        </button>
+                      )}
+                      {c.status !== "hidden" && (
+                        <button onClick={() => updateStatus(c.id, "hidden")} title="Sembunyikan" className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-500/10 transition-colors">
+                          <EyeOff size={14} />
+                        </button>
+                      )}
                       <button onClick={() => { setEditId(c.id); setEditContent(c.content); }} title="Edit" className="p-1.5 rounded-lg text-blue-400 hover:bg-blue-500/10 transition-colors">
                         <Pencil size={14} />
                       </button>
