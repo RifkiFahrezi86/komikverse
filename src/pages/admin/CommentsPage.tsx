@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, X, Trash2, Loader2, Filter, MessageSquare, Sparkles } from "lucide-react";
 import { useAuth } from "../../lib/auth";
+import { getPopular, getLatest } from "../../lib/api";
 
 const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9rb21pa3ZlcnNlLWFwaS1hbWJlci52ZXJjZWwuYXBwL2FwaQ==");
 const ADMIN_BASE = API_BASE.replace(/\/api\/?$/, "/api");
@@ -73,18 +74,41 @@ export default function AdminCommentsPage() {
   ];
 
   const handleSeed = async () => {
-    if (!confirm("Generate 20 user palsu & 60 komentar acak?\nIni akan menambah data ke database.")) return;
+    if (!confirm("Generate 20 user palsu & 60 komentar acak?\nKomentar akan muncul di halaman komik yang ada di website.")) return;
     setSeeding(true);
     setSeedResult(null);
     try {
+      // Fetch real comics from API providers
+      setSeedResult("⏳ Mengambil daftar komik...");
+      const [popular, latest] = await Promise.allSettled([getPopular(), getLatest()]);
+      const allComics: { slug: string; title: string }[] = [];
+      const seen = new Set<string>();
+      for (const result of [popular, latest]) {
+        if (result.status === "fulfilled" && result.value.data) {
+          for (const c of result.value.data) {
+            const slug = c.href.replace(/^\/manga\//, "").replace(/^\//, "").replace(/\/$/, "");
+            if (slug && !seen.has(slug)) {
+              seen.add(slug);
+              allComics.push({ slug, title: c.title });
+            }
+          }
+        }
+      }
+      if (allComics.length === 0) {
+        setSeedResult("❌ Gagal mengambil daftar komik dari API. Coba lagi nanti.");
+        setSeeding(false);
+        return;
+      }
+      // Send real comics to seed endpoint
+      setSeedResult(`⏳ Seeding ke ${allComics.length} komik...`);
       const r = await fetch(`${ADMIN_BASE}/admin/seed`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ userCount: 20, commentCount: 60 }),
+        body: JSON.stringify({ userCount: 20, commentCount: 60, comics: allComics.slice(0, 30) }),
       });
       const d = await r.json();
       if (d.success) {
-        setSeedResult(`✅ ${d.users_created} user & ${d.comments_created} komentar berhasil dibuat!`);
+        setSeedResult(`✅ ${d.users_created} user & ${d.comments_created} komentar dibuat di ${d.comics_used} komik!`);
         loadComments();
       } else {
         setSeedResult(`❌ ${d.error || "Gagal seed data"}`);
