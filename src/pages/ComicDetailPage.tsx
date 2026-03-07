@@ -14,7 +14,7 @@ import {
   Star,
 } from "lucide-react";
 import type { ComicDetail } from "../lib/api";
-import { getComicDetail } from "../lib/api";
+import { getComicDetail, getProvider } from "../lib/api";
 import { addBookmark, removeBookmark, isBookmarked } from "../lib/bookmark";
 import CommentSection from "../components/CommentSection";
 import AdSlot from "../components/AdSlot";
@@ -38,6 +38,7 @@ export default function ComicDetailPage() {
   const [sortAsc, setSortAsc] = useState(false);
   const [chapterSearch, setChapterSearch] = useState("");
   const [showFullDesc, setShowFullDesc] = useState(false);
+  const currentProvider = getProvider();
 
   useEffect(() => {
     if (!slug) return;
@@ -298,6 +299,11 @@ export default function ComicDetailPage() {
                       <div className="flex-grow min-w-0">
                         <p className="text-sm font-body font-medium text-[#c0c0d0] group-hover:text-[#f97316] transition-colors truncate">
                           Chapter {ch.title}
+                          {ch.provider && ch.provider !== currentProvider && (
+                            <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-white/[0.06] text-[#8b8ba0] border border-white/[0.06]">
+                              {ch.provider === 'shinigami' ? '🔮' : ch.provider === 'komiku' ? '📚' : '⚔️'} {ch.provider}
+                            </span>
+                          )}
                         </p>
                       </div>
                       {ch.date && (

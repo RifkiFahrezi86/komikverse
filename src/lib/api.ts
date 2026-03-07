@@ -70,6 +70,7 @@ export interface Chapter {
   href: string;
   date?: string;
   number?: number;
+  provider?: string;
 }
 
 export interface ChapterData {
