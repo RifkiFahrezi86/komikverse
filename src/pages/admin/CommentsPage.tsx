@@ -50,16 +50,10 @@ export default function AdminCommentsPage() {
   };
 
   const handleSeed = async () => {
-    if (!confirm("Hapus semua komentar & user palsu lama, lalu buat ulang?\n20 user baru & 60 komentar di komik yang ada di website.")) return;
+    if (!confirm("Buat 20 user baru & 60 komentar acak di komik yang ada di website?")) return;
     setSeeding(true);
     setSeedResult(null);
     try {
-      setSeedResult("⏳ Menghapus data palsu lama...");
-      await fetch(`${ADMIN_BASE}/admin/seed`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
       setSeedResult("⏳ Mengambil daftar komik...");
       const [popular, latest] = await Promise.allSettled([getPopular(), getLatest()]);
       const allComics: { slug: string; title: string }[] = [];
