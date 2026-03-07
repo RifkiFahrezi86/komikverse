@@ -140,10 +140,12 @@ function buildUrl(endpoint: string, provider = currentProvider): string {
   return `${API_BASE}${endpoint}${separator}provider=${provider}`;
 }
 
+const FETCH_TIMEOUT = 8000;
+
 async function fetchApi<T>(endpoint: string): Promise<ApiResponse<T>> {
   const url = buildUrl(endpoint);
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
   try {
     const authHeaders = await generateAuthHeaders();
     const res = await fetch(url, {
@@ -160,7 +162,7 @@ async function fetchApi<T>(endpoint: string): Promise<ApiResponse<T>> {
 async function fetchApiWithProvider<T>(endpoint: string, provider: string): Promise<ApiResponse<T>> {
   const url = buildUrl(endpoint, provider);
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
   try {
     const authHeaders = await generateAuthHeaders();
     const res = await fetch(url, {
@@ -202,19 +204,50 @@ async function fetchAllProviders(endpoint: string): Promise<Comic[]> {
   return all;
 }
 
+// Homepage functions — use primary provider (Shinigami) for fast loading
+// Phase 2 enrichment from other providers is handled by the *More() helpers below
 export async function getLatest(page = 1): Promise<ApiResponse<Comic[]>> {
-  const data = await fetchAllProviders(`/terbaru?page=${page}`);
-  return { status: "Ok", data };
+  return fetchApiWithProvider<Comic[]>(`/terbaru?page=${page}`, "shinigami");
 }
 
 export async function getPopular(): Promise<ApiResponse<Comic[]>> {
-  const data = await fetchAllProviders("/popular");
-  return { status: "Ok", data };
+  return fetchApiWithProvider<Comic[]>("/popular", "shinigami");
 }
 
 export async function getRecommended(): Promise<ApiResponse<Comic[]>> {
-  const data = await fetchAllProviders("/recommended");
-  return { status: "Ok", data };
+  return fetchApiWithProvider<Comic[]>("/recommended", "shinigami");
+}
+
+// Fetch comics from secondary providers (for background enrichment)
+async function fetchSecondaryProviders(endpoint: string): Promise<Comic[]> {
+  const others = PROVIDERS.filter(p => p.id !== "shinigami");
+  const results = await Promise.allSettled(
+    others.map(async (p) => {
+      try {
+        const res = await fetchApiWithProvider<Comic[]>(endpoint, p.id);
+        return (res.data || []).map((raw) => ({ ...normalizeComic(raw), _provider: p.id }));
+      } catch {
+        return [];
+      }
+    })
+  );
+  const all: Comic[] = [];
+  for (const r of results) {
+    if (r.status === "fulfilled") all.push(...r.value);
+  }
+  return all;
+}
+
+export async function getPopularMore(): Promise<Comic[]> {
+  return fetchSecondaryProviders("/popular");
+}
+
+export async function getLatestMore(): Promise<Comic[]> {
+  return fetchSecondaryProviders("/terbaru?page=1");
+}
+
+export async function getRecommendedMore(): Promise<Comic[]> {
+  return fetchSecondaryProviders("/recommended");
 }
 
 export async function searchComics(keyword: string): Promise<ApiResponse<Comic[]>> {
@@ -228,41 +261,47 @@ export async function searchAllProviders(keyword: string): Promise<ApiResponse<C
 }
 
 export async function getComicDetail(slug: string): Promise<ApiResponse<ComicDetail>> {
-  // Try all providers, prefer one with the most chapters
-  const providerOrder = [currentProvider, ...PROVIDERS.map(p => p.id).filter(id => id !== currentProvider)];
-  let bestResult: ApiResponse<ComicDetail> | null = null;
-  let bestProvider = "";
-  for (const pid of providerOrder) {
-    try {
-      const res = await fetchApiWithProvider<ComicDetail>(`/detail/${slug}`, pid);
+  // Try ALL providers in PARALLEL — pick the one with the most chapters
+  const results = await Promise.allSettled(
+    PROVIDERS.map(async (p) => {
+      const res = await fetchApiWithProvider<ComicDetail>(`/detail/${slug}`, p.id);
       if (res.data) {
-        res.data = normalizeDetail(res.data);
-        const chapters = res.data.chapters?.length || 0;
-        const bestChapters = bestResult?.data?.chapters?.length || 0;
-        if (!bestResult || chapters > bestChapters) {
-          bestResult = res;
-          bestProvider = pid;
-        }
-        // If we found chapters, no need to try more providers
-        if (chapters > 0) break;
+        return { provider: p.id, data: normalizeDetail(res.data) };
       }
-    } catch { /* try next */ }
+      throw new Error("No data");
+    })
+  );
+
+  let best: { provider: string; data: ComicDetail } | null = null;
+  for (const r of results) {
+    if (r.status === "fulfilled") {
+      const chapters = r.value.data.chapters?.length || 0;
+      const bestChapters = best?.data.chapters?.length || 0;
+      if (!best || chapters > bestChapters) {
+        best = r.value;
+      }
+    }
   }
-  if (bestResult) {
-    if (bestProvider) setProvider(bestProvider);
-    return bestResult;
+
+  if (best) {
+    setProvider(best.provider);
+    return { status: "Ok", data: best.data };
   }
   throw new Error("Comic not found in any provider");
 }
 
 export async function getChapterImages(slug: string): Promise<ApiResponse<ChapterData[]>> {
-  // Try current provider first, then fallback to others
-  const providerOrder = [currentProvider, ...PROVIDERS.map(p => p.id).filter(id => id !== currentProvider)];
-  for (const pid of providerOrder) {
-    try {
-      const res = await fetchApiWithProvider<ChapterData[]>(`/read/${slug}`, pid);
-      if (res.data && res.data.length > 0) return res;
-    } catch { /* try next */ }
+  // Try ALL providers in PARALLEL — first valid result wins
+  const results = await Promise.allSettled(
+    PROVIDERS.map(async (p) => {
+      const res = await fetchApiWithProvider<ChapterData[]>(`/read/${slug}`, p.id);
+      if (res.data && res.data.length > 0 && res.data[0]?.panel?.length > 0) return res;
+      throw new Error("No panels");
+    })
+  );
+
+  for (const r of results) {
+    if (r.status === "fulfilled") return r.value;
   }
   throw new Error("Chapter not found in any provider");
 }

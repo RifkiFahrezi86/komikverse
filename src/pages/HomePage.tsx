@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, ChevronLeft, TrendingUp, Sparkles, Clock } from "lucide-react";
 import type { Comic } from "../lib/api";
-import { getPopular, getLatest, getRecommended } from "../lib/api";
+import { getPopular, getLatest, getRecommended, getPopularMore, getLatestMore, getRecommendedMore } from "../lib/api";
 import ComicCard, { UpdateCard, RecommendCard } from "../components/ComicCard";
 import ComicCardSkeleton, { UpdateCardSkeleton, RecommendCardSkeleton } from "../components/ComicCardSkeleton";
 import AdSlot from "../components/AdSlot";
@@ -107,6 +107,7 @@ export default function HomePage() {
 
   useEffect(() => {
     async function load() {
+      // Phase 1: Fast load from primary provider (Shinigami)
       try {
         const [popRes, latRes, recRes] = await Promise.all([
           getPopular(),
@@ -120,6 +121,28 @@ export default function HomePage() {
         console.error("Failed to load homepage:", err);
       } finally {
         setLoading(false);
+      }
+
+      // Phase 2: Enrich with other providers in background
+      try {
+        const [morePop, moreLat, moreRec] = await Promise.all([
+          getPopularMore(),
+          getLatestMore(),
+          getRecommendedMore(),
+        ]);
+        const mergeUnique = (existing: Comic[], more: Comic[]): Comic[] => {
+          const seen = new Set(existing.map(c => c.title.toLowerCase().replace(/[^a-z0-9]/g, "")));
+          const novel = more.filter(c => {
+            const key = c.title.toLowerCase().replace(/[^a-z0-9]/g, "");
+            return !seen.has(key);
+          });
+          return novel.length > 0 ? [...existing, ...novel] : existing;
+        };
+        if (morePop.length > 0) setPopular(prev => mergeUnique(prev, morePop));
+        if (moreLat.length > 0) setLatest(prev => mergeUnique(prev, moreLat));
+        if (moreRec.length > 0) setRecommended(prev => mergeUnique(prev, moreRec));
+      } catch {
+        // Background enrichment failed — homepage still works with primary data
       }
     }
     load();
