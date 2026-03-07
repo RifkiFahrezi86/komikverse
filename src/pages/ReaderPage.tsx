@@ -282,14 +282,14 @@ export default function ReaderPage() {
         </div>
       )}
 
-      {/* Scroll to top — hidden on mobile, show/hide with nav on desktop */}
+      {/* Scroll to top — show/hide with nav like prev/next */}
       {viewMode === "long-strip" && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
-          className={`fixed right-4 z-50 p-2.5 rounded-lg bg-[#16161f]/90 border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/30 transition-all hidden sm:block ${
+          className={`fixed right-4 z-50 p-2.5 rounded-lg bg-[#16161f]/90 border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/30 transition-all ${
             navVisible ? "bottom-20 opacity-100" : "bottom-4 opacity-0 pointer-events-none"
           }`}
           title="Scroll ke atas"
