@@ -9,10 +9,11 @@ const COMMENT_BASE = API_BASE.replace(/\/api\/?$/, "/api");
 interface CommentItem {
   id: number;
   content: string;
-  user_id: number;
-  username: string;
-  avatar_url?: string;
+  comic_slug: string;
+  chapter_slug?: string;
+  parent_id?: number;
   created_at: string;
+  user: { id: number; username: string; avatar_url?: string; role?: string };
   replies?: CommentItem[];
 }
 
@@ -29,7 +30,7 @@ export default function CommentSection({ comicSlug }: { comicSlug: string }) {
   const loadComments = () => {
     fetch(`${COMMENT_BASE}/comments?comic_slug=${encodeURIComponent(comicSlug)}`)
       .then((r) => r.json())
-      .then((d) => setComments(d.data || []))
+      .then((d) => setComments(d.comments || []))
       .catch(() => {})
       .finally(() => setLoading(false));
   };
@@ -169,18 +170,18 @@ function CommentBubble({
   onPostReply: (content: string, parentId: number) => void;
   onCancelReply: () => void;
 }) {
-  const canDelete = currentUser && (currentUser.id === comment.user_id || currentUser.role === "admin");
+  const canDelete = currentUser && (currentUser.id === comment.user.id || currentUser.role === "admin");
   const isReplying = replyTo?.id === comment.id;
 
   return (
     <div>
       <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-white/[0.01] transition-colors">
         <div className="w-7 h-7 rounded-full bg-[#f97316]/20 flex items-center justify-center text-[#f97316] text-[10px] font-bold font-body shrink-0 mt-0.5">
-          {comment.username.charAt(0).toUpperCase()}
+          {comment.user.username.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-xs font-body font-medium text-white/85">{comment.username}</span>
+            <span className="text-xs font-body font-medium text-white/85">{comment.user.username}</span>
             <span className="text-[10px] text-[#5c5c6e] font-body">
               {new Date(comment.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
             </span>
@@ -188,7 +189,7 @@ function CommentBubble({
           <p className="text-xs text-[#c0c0d0] font-body leading-relaxed whitespace-pre-wrap break-words">{comment.content}</p>
           <div className="flex items-center gap-2 mt-1.5">
             {currentUser && (
-              <button onClick={() => onReply(comment.id, comment.username)} className="flex items-center gap-1 text-[10px] font-body text-[#5c5c6e] hover:text-[#f97316] transition-colors">
+              <button onClick={() => onReply(comment.id, comment.user.username)} className="flex items-center gap-1 text-[10px] font-body text-[#5c5c6e] hover:text-[#f97316] transition-colors">
                 <Reply size={11} /> Balas
               </button>
             )}
@@ -207,7 +208,7 @@ function CommentBubble({
           <textarea
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
-            placeholder={`Balas @${comment.username}...`}
+            placeholder={`Balas @${comment.user.username}...`}
             rows={2}
             maxLength={1000}
             className="flex-1 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-xs font-body text-white placeholder-[#5c5c6e] focus:outline-none focus:border-[#f97316]/30 transition-colors resize-none"
