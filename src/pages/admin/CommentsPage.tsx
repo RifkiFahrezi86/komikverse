@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, X, Trash2, Loader2, Filter, MessageSquare, Sparkles } from "lucide-react";
+import { Trash2, Loader2, MessageSquare, Sparkles } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import { getPopular, getLatest } from "../../lib/api";
 import { extractSlug } from "../../components/ComicCard";
@@ -20,38 +20,20 @@ export default function AdminCommentsPage() {
   const { token } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
   const [actionId, setActionId] = useState<number | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<string | null>(null);
 
   const loadComments = () => {
     setLoading(true);
-    const url = filter === "all"
-      ? `${ADMIN_BASE}/admin/comments`
-      : `${ADMIN_BASE}/admin/comments?status=${filter}`;
-    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${ADMIN_BASE}/admin/comments`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((d) => setComments(d.comments || []))
       .catch(() => {})
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadComments(); }, [filter]); // eslint-disable-line
-
-  const updateStatus = async (id: number, status: string) => {
-    setActionId(id);
-    try {
-      await fetch(`${ADMIN_BASE}/admin/comments`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ id, status }),
-      });
-      loadComments();
-    } finally {
-      setActionId(null);
-    }
-  };
+  useEffect(() => { loadComments(); }, []); // eslint-disable-line
 
   const deleteComment = async (id: number) => {
     if (!confirm("Hapus komentar ini?")) return;
@@ -67,26 +49,17 @@ export default function AdminCommentsPage() {
     }
   };
 
-  const FILTERS = [
-    { key: "all", label: "Semua" },
-    { key: "pending", label: "Pending" },
-    { key: "approved", label: "Disetujui" },
-    { key: "hidden", label: "Disembunyikan" },
-  ];
-
   const handleSeed = async () => {
     if (!confirm("Hapus semua komentar & user palsu lama, lalu buat ulang?\n20 user baru & 60 komentar di komik yang ada di website.")) return;
     setSeeding(true);
     setSeedResult(null);
     try {
-      // Step 1: Clean old fake data
       setSeedResult("⏳ Menghapus data palsu lama...");
       await fetch(`${ADMIN_BASE}/admin/seed`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Step 2: Fetch real comics from API providers
       setSeedResult("⏳ Mengambil daftar komik...");
       const [popular, latest] = await Promise.allSettled([getPopular(), getLatest()]);
       const allComics: { slug: string; title: string }[] = [];
@@ -107,7 +80,6 @@ export default function AdminCommentsPage() {
         setSeeding(false);
         return;
       }
-      // Send real comics to seed endpoint
       setSeedResult(`⏳ Seeding ke ${allComics.length} komik...`);
       const r = await fetch(`${ADMIN_BASE}/admin/seed`, {
         method: "POST",
@@ -128,6 +100,28 @@ export default function AdminCommentsPage() {
     }
   };
 
+  const handleCleanSeed = async () => {
+    if (!confirm("Hapus semua komentar & user palsu?\nKomentar asli dari user real tidak terpengaruh.")) return;
+    setSeeding(true);
+    setSeedResult(null);
+    try {
+      const r = await fetch(`${ADMIN_BASE}/admin/seed`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const d = await r.json();
+      if (d.success) {
+        setSeedResult(`🗑️ ${d.comments_deleted} komentar & ${d.users_deleted} user palsu dihapus!`);
+        loadComments();
+      } else {
+        setSeedResult(`❌ ${d.error || "Gagal menghapus"}`);
+      }
+    } catch {
+      setSeedResult("❌ Gagal menghubungi server");
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   return (
     <div>
@@ -137,6 +131,14 @@ export default function AdminCommentsPage() {
         </h2>
         <div className="flex items-center gap-2">
           <button
+            onClick={handleCleanSeed}
+            disabled={seeding}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-body font-medium rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-all disabled:opacity-50"
+          >
+            {seeding ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+            Hapus Seed Lama
+          </button>
+          <button
             onClick={handleSeed}
             disabled={seeding}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-body font-medium rounded-lg bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 transition-all disabled:opacity-50"
@@ -144,20 +146,6 @@ export default function AdminCommentsPage() {
             {seeding ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
             Seed Data
           </button>
-          <div className="flex items-center gap-1">
-            <Filter size={14} className="text-[#5c5c6e] mr-1" />
-            {FILTERS.map((f) => (
-              <button
-                key={f.key}
-                onClick={() => setFilter(f.key)}
-                className={`px-2.5 py-1 text-xs font-body font-medium rounded-lg transition-all ${
-                  filter === f.key ? "bg-[#f97316] text-white" : "text-[#8e8ea0] hover:text-white hover:bg-white/[0.04]"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -184,13 +172,6 @@ export default function AdminCommentsPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <span className="text-sm font-body font-medium text-white/85">{c.username}</span>
-                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-body font-bold uppercase ${
-                      c.status === "approved" ? "bg-emerald-500/15 text-emerald-400"
-                        : c.status === "pending" ? "bg-amber-500/15 text-amber-400"
-                        : "bg-red-500/15 text-red-400"
-                    }`}>
-                      {c.status}
-                    </span>
                     <span className="text-[10px] text-[#5c5c6e] font-body">
                       {new Date(c.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
                     </span>
@@ -202,21 +183,9 @@ export default function AdminCommentsPage() {
                   {actionId === c.id ? (
                     <Loader2 size={14} className="text-[#f97316] animate-spin" />
                   ) : (
-                    <>
-                      {c.status !== "approved" && (
-                        <button onClick={() => updateStatus(c.id, "approved")} title="Setujui" className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors">
-                          <Check size={14} />
-                        </button>
-                      )}
-                      {c.status !== "hidden" && (
-                        <button onClick={() => updateStatus(c.id, "hidden")} title="Sembunyikan" className="p-1.5 rounded-lg text-amber-400 hover:bg-amber-500/10 transition-colors">
-                          <X size={14} />
-                        </button>
-                      )}
-                      <button onClick={() => deleteComment(c.id)} title="Hapus" className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
-                        <Trash2 size={14} />
-                      </button>
-                    </>
+                    <button onClick={() => deleteComment(c.id)} title="Hapus" className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
+                      <Trash2 size={14} />
+                    </button>
                   )}
                 </div>
               </div>
