@@ -120,6 +120,29 @@ export default function AdminCommentsPage() {
     }
   };
 
+  const handleCleanSeed = async () => {
+    if (!confirm("Hapus semua komentar & user dari seed lama (slug palsu)?\nData asli tidak terpengaruh.")) return;
+    setSeeding(true);
+    setSeedResult(null);
+    try {
+      const r = await fetch(`${ADMIN_BASE}/admin/seed`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const d = await r.json();
+      if (d.success) {
+        setSeedResult(`🗑️ ${d.comments_deleted} komentar & ${d.users_deleted} user palsu dihapus!`);
+        loadComments();
+      } else {
+        setSeedResult(`❌ ${d.error || "Gagal menghapus"}`);
+      }
+    } catch {
+      setSeedResult("❌ Gagal menghubungi server");
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
@@ -127,6 +150,14 @@ export default function AdminCommentsPage() {
           <MessageSquare size={20} className="text-[#f97316]" /> Kelola Komentar
         </h2>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleCleanSeed}
+            disabled={seeding}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-body font-medium rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-all disabled:opacity-50"
+          >
+            {seeding ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+            Hapus Seed Lama
+          </button>
           <button
             onClick={handleSeed}
             disabled={seeding}
