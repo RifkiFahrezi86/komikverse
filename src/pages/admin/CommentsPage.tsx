@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, X, Trash2, Loader2, Filter, MessageSquare, Sparkles } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import { getPopular, getLatest } from "../../lib/api";
+import { extractSlug } from "../../components/ComicCard";
 
 const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9rb21pa3ZlcnNlLWFwaS1hbWJlci52ZXJjZWwuYXBwL2FwaQ==");
 const ADMIN_BASE = API_BASE.replace(/\/api\/?$/, "/api");
@@ -74,11 +75,18 @@ export default function AdminCommentsPage() {
   ];
 
   const handleSeed = async () => {
-    if (!confirm("Generate 20 user palsu & 60 komentar acak?\nKomentar akan muncul di halaman komik yang ada di website.")) return;
+    if (!confirm("Hapus semua komentar & user palsu lama, lalu buat ulang?\n20 user baru & 60 komentar di komik yang ada di website.")) return;
     setSeeding(true);
     setSeedResult(null);
     try {
-      // Fetch real comics from API providers
+      // Step 1: Clean old fake data
+      setSeedResult("⏳ Menghapus data palsu lama...");
+      await fetch(`${ADMIN_BASE}/admin/seed`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // Step 2: Fetch real comics from API providers
       setSeedResult("⏳ Mengambil daftar komik...");
       const [popular, latest] = await Promise.allSettled([getPopular(), getLatest()]);
       const allComics: { slug: string; title: string }[] = [];
@@ -86,7 +94,7 @@ export default function AdminCommentsPage() {
       for (const result of [popular, latest]) {
         if (result.status === "fulfilled" && result.value.data) {
           for (const c of result.value.data) {
-            const slug = c.href.replace(/^\/manga\//, "").replace(/^\//, "").replace(/\/$/, "");
+            const slug = extractSlug(c.href);
             if (slug && !seen.has(slug)) {
               seen.add(slug);
               allComics.push({ slug, title: c.title });
@@ -120,28 +128,6 @@ export default function AdminCommentsPage() {
     }
   };
 
-  const handleCleanSeed = async () => {
-    if (!confirm("Hapus semua komentar & user dari seed lama (slug palsu)?\nData asli tidak terpengaruh.")) return;
-    setSeeding(true);
-    setSeedResult(null);
-    try {
-      const r = await fetch(`${ADMIN_BASE}/admin/seed`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const d = await r.json();
-      if (d.success) {
-        setSeedResult(`🗑️ ${d.comments_deleted} komentar & ${d.users_deleted} user palsu dihapus!`);
-        loadComments();
-      } else {
-        setSeedResult(`❌ ${d.error || "Gagal menghapus"}`);
-      }
-    } catch {
-      setSeedResult("❌ Gagal menghubungi server");
-    } finally {
-      setSeeding(false);
-    }
-  };
 
   return (
     <div>
@@ -150,14 +136,6 @@ export default function AdminCommentsPage() {
           <MessageSquare size={20} className="text-[#f97316]" /> Kelola Komentar
         </h2>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleCleanSeed}
-            disabled={seeding}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-body font-medium rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600/30 transition-all disabled:opacity-50"
-          >
-            {seeding ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-            Hapus Seed Lama
-          </button>
           <button
             onClick={handleSeed}
             disabled={seeding}
