@@ -238,60 +238,54 @@ export default function ReaderPage() {
         )}
       </div>
 
-      {/* Bottom chapter nav */}
+      {/* Bottom chapter nav — inline at end of content, not sticky */}
       {chapters.length > 0 && (
         <div
-          className={`sticky bottom-0 left-0 right-0 z-50 transition-transform duration-300 ${
-            navVisible ? "translate-y-0" : "translate-y-full"
-          }`}
+          className="bg-[#0a0a0f] border-t border-white/[0.04]"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="bg-[#0a0a0f]/95 backdrop-blur-xl border-t border-white/[0.04]">
-            <div className="max-w-4xl mx-auto px-4 py-3">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => prevChapter && goToChapter(prevChapter)}
-                  disabled={!prevChapter}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-body font-medium text-sm transition-all ${
-                    prevChapter
-                      ? "bg-white/[0.04] border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/30"
-                      : "bg-white/[0.02] text-[#3a3a4a] cursor-not-allowed"
-                  }`}
-                >
-                  <SkipBack size={14} />
-                  <span className="hidden sm:inline">Prev Chapter</span>
-                  <span className="sm:hidden">Prev</span>
-                </button>
+          <div className="max-w-4xl mx-auto px-4 py-4">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => prevChapter && goToChapter(prevChapter)}
+                disabled={!prevChapter}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-body font-medium text-sm transition-all ${
+                  prevChapter
+                    ? "bg-white/[0.04] border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/30"
+                    : "bg-white/[0.02] text-[#3a3a4a] cursor-not-allowed"
+                }`}
+              >
+                <SkipBack size={14} />
+                <span className="hidden sm:inline">Prev Chapter</span>
+                <span className="sm:hidden">Prev</span>
+              </button>
 
-                <button
-                  onClick={() => nextChapter && goToChapter(nextChapter)}
-                  disabled={!nextChapter}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-body font-medium text-sm transition-all ${
-                    nextChapter
-                      ? "bg-[#f97316] text-white hover:bg-[#ea580c]"
-                      : "bg-white/[0.02] text-[#3a3a4a] cursor-not-allowed"
-                  }`}
-                >
-                  <span className="hidden sm:inline">Next Chapter</span>
-                  <span className="sm:hidden">Next</span>
-                  <SkipForward size={14} />
-                </button>
-              </div>
+              <button
+                onClick={() => nextChapter && goToChapter(nextChapter)}
+                disabled={!nextChapter}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-body font-medium text-sm transition-all ${
+                  nextChapter
+                    ? "bg-[#f97316] text-white hover:bg-[#ea580c]"
+                    : "bg-white/[0.02] text-[#3a3a4a] cursor-not-allowed"
+                }`}
+              >
+                <span className="hidden sm:inline">Next Chapter</span>
+                <span className="sm:hidden">Next</span>
+                <SkipForward size={14} />
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Scroll to top */}
+      {/* Scroll to top — hidden on mobile */}
       {viewMode === "long-strip" && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
-          className={`fixed right-4 z-50 p-2.5 rounded-lg bg-[#16161f]/90 border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/30 transition-all ${
-            navVisible ? "bottom-20" : "bottom-4"
-          }`}
+          className="fixed right-4 bottom-4 z-50 p-2.5 rounded-lg bg-[#16161f]/90 border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/30 transition-all hidden sm:block"
           title="Scroll ke atas"
         >
           <ArrowUp size={18} />
