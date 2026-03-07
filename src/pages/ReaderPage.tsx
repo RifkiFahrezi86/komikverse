@@ -238,10 +238,12 @@ export default function ReaderPage() {
         )}
       </div>
 
-      {/* Bottom chapter nav — sticky at bottom */}
+      {/* Bottom chapter nav */}
       {chapters.length > 0 && (
         <div
-          className="sticky bottom-0 left-0 right-0 z-50"
+          className={`sticky bottom-0 left-0 right-0 z-50 transition-transform duration-300 ${
+            navVisible ? "translate-y-0" : "translate-y-full"
+          }`}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="bg-[#0a0a0f]/95 backdrop-blur-xl border-t border-white/[0.04]">
@@ -280,14 +282,16 @@ export default function ReaderPage() {
         </div>
       )}
 
-      {/* Scroll to top — hidden on mobile */}
+      {/* Scroll to top */}
       {viewMode === "long-strip" && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
-          className="fixed right-4 bottom-4 z-50 p-2.5 rounded-lg bg-[#16161f]/90 border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/30 transition-all hidden sm:block"
+          className={`fixed right-4 z-50 p-2.5 rounded-lg bg-[#16161f]/90 border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/30 transition-all ${
+            navVisible ? "bottom-20" : "bottom-4"
+          }`}
           title="Scroll ke atas"
         >
           <ArrowUp size={18} />
