@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, X, Trash2, Loader2, Filter, MessageSquare } from "lucide-react";
+import { Check, X, Trash2, Loader2, Filter, MessageSquare, Sparkles } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9rb21pa3ZlcnNlLWFwaS1hbWJlci52ZXJjZWwuYXBwL2FwaQ==");
@@ -20,6 +20,8 @@ export default function AdminCommentsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [actionId, setActionId] = useState<number | null>(null);
+  const [seeding, setSeeding] = useState(false);
+  const [seedResult, setSeedResult] = useState<string | null>(null);
 
   const loadComments = () => {
     setLoading(true);
@@ -70,27 +72,67 @@ export default function AdminCommentsPage() {
     { key: "hidden", label: "Disembunyikan" },
   ];
 
+  const handleSeed = async () => {
+    if (!confirm("Generate 20 user palsu & 60 komentar acak?\nIni akan menambah data ke database.")) return;
+    setSeeding(true);
+    setSeedResult(null);
+    try {
+      const r = await fetch(`${ADMIN_BASE}/admin/seed`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userCount: 20, commentCount: 60 }),
+      });
+      const d = await r.json();
+      if (d.success) {
+        setSeedResult(`✅ ${d.users_created} user & ${d.comments_created} komentar berhasil dibuat!`);
+        loadComments();
+      } else {
+        setSeedResult(`❌ ${d.error || "Gagal seed data"}`);
+      }
+    } catch {
+      setSeedResult("❌ Gagal menghubungi server");
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <h2 className="font-display text-lg font-bold text-white/85 flex items-center gap-2">
           <MessageSquare size={20} className="text-[#f97316]" /> Kelola Komentar
         </h2>
-        <div className="flex items-center gap-1">
-          <Filter size={14} className="text-[#5c5c6e] mr-1" />
-          {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`px-2.5 py-1 text-xs font-body font-medium rounded-lg transition-all ${
-                filter === f.key ? "bg-[#f97316] text-white" : "text-[#8e8ea0] hover:text-white hover:bg-white/[0.04]"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSeed}
+            disabled={seeding}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-body font-medium rounded-lg bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 transition-all disabled:opacity-50"
+          >
+            {seeding ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+            Seed Data
+          </button>
+          <div className="flex items-center gap-1">
+            <Filter size={14} className="text-[#5c5c6e] mr-1" />
+            {FILTERS.map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={`px-2.5 py-1 text-xs font-body font-medium rounded-lg transition-all ${
+                  filter === f.key ? "bg-[#f97316] text-white" : "text-[#8e8ea0] hover:text-white hover:bg-white/[0.04]"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+
+      {seedResult && (
+        <div className="mb-4 px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm font-body text-white/80">
+          {seedResult}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-12">
