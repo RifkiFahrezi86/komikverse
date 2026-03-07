@@ -298,7 +298,7 @@ export default function ComicDetailPage() {
                     >
                       <div className="flex-grow min-w-0">
                         <p className="text-sm font-body font-medium text-[#c0c0d0] group-hover:text-[#f97316] transition-colors truncate">
-                          Chapter {ch.title}
+                          {ch.title.match(/^chapter/i) ? ch.title : `Chapter ${ch.title}`}
                           {ch.provider && ch.provider !== currentProvider && (
                             <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-white/[0.06] text-[#8b8ba0] border border-white/[0.06]">
                               {ch.provider === 'shinigami' ? '🔮' : ch.provider === 'komiku' ? '📚' : '⚔️'} {ch.provider}
