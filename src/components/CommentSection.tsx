@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Send, Loader2, MessageSquare, Reply, Trash2 } from "lucide-react";
+import { Send, Loader2, MessageSquare, Reply, Trash2, ShieldCheck } from "lucide-react";
 import { useAuth } from "../lib/auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9rb21pa3ZlcnNlLWFwaS1hbWJlci52ZXJjZWwuYXBwL2FwaQ==");
@@ -182,6 +182,11 @@ function CommentBubble({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <span className="text-xs font-body font-medium text-white/85">{comment.user.username}</span>
+            {comment.user.role === "admin" && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-body font-bold bg-[#f97316]/15 text-[#f97316]">
+                <ShieldCheck size={10} /> Admin
+              </span>
+            )}
             <span className="text-[10px] text-[#5c5c6e] font-body">
               {new Date(comment.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
             </span>
