@@ -20,16 +20,12 @@ function useImagePreloader(panels: string[], currentIndex: number, ahead = 5) {
     if (panels.length === 0) return;
     const start = Math.max(0, currentIndex);
     const end = Math.min(panels.length, start + ahead);
+    const added: HTMLLinkElement[] = [];
     for (let i = start; i < end; i++) {
-      const link = document.createElement('link');
-      link.rel = 'preload';
-      link.as = 'image';
-      link.href = panels[i];
-      // Avoid duplicates
-      if (!document.querySelector(`link[href="${CSS.escape(panels[i])}"]`)) {
-        document.head.appendChild(link);
-      }
+      const img = new Image();
+      img.src = panels[i];
     }
+    return () => { added.forEach(l => l.remove()); };
   }, [panels, currentIndex, ahead]);
 }
 
@@ -142,6 +138,11 @@ export default function ReaderPage() {
     });
   };
 
+  const panels = chapterData?.panel || [];
+
+  // Preload upcoming images (must be called before any early return)
+  useImagePreloader(panels, viewMode === "single" ? currentPage : 0, viewMode === "single" ? 3 : 8);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black">
@@ -163,11 +164,6 @@ export default function ReaderPage() {
       </div>
     );
   }
-
-  const panels = chapterData.panel;
-
-  // Preload upcoming images
-  useImagePreloader(panels, viewMode === "single" ? currentPage : 0, viewMode === "single" ? 3 : 8);
 
   return (
     <div className="min-h-screen bg-black relative" onClick={toggleNav}>
