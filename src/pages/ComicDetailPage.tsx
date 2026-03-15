@@ -23,8 +23,8 @@ function extractChapterSlug(href: string): string {
   return href.replace(/^\/(chapter)\//, "").replace(/^\//, "");
 }
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1500;
+const MAX_RETRIES = 2;
+const RETRY_DELAY = 1000;
 
 export default function ComicDetailPage() {
   const { slug } = useParams<{ slug: string }>();

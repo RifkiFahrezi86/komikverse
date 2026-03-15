@@ -1,59 +1,76 @@
+import { lazy, Suspense } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import Layout from "./layouts/Layout";
 import ReaderLayout from "./layouts/ReaderLayout";
-import AdminLayout from "./layouts/AdminLayout";
-import HomePage from "./pages/HomePage";
-import LatestPage from "./pages/LatestPage";
-import SearchPage from "./pages/SearchPage";
-import GenrePage from "./pages/GenrePage";
-import GenreDetailPage from "./pages/GenreDetailPage";
-import ComicDetailPage from "./pages/ComicDetailPage";
-import TypePage from "./pages/TypePage";
-import ReaderPage from "./pages/ReaderPage";
-import BookmarkPage from "./pages/BookmarkPage";
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
 import ProtectedRoute from "./components/ProtectedRoute";
-import AdminDashboardPage from "./pages/admin/DashboardPage";
-import AdminCommentsPage from "./pages/admin/CommentsPage";
-import AdminAdsPage from "./pages/admin/AdsPage";
-import AdminUsersPage from "./pages/admin/UsersPage";
-import AdminSettingsPage from "./pages/admin/SettingsPage";
-import ChangePasswordPage from "./pages/ChangePasswordPage";
+
+// Lazy-load all pages for code splitting
+const HomePage = lazy(() => import("./pages/HomePage"));
+const LatestPage = lazy(() => import("./pages/LatestPage"));
+const SearchPage = lazy(() => import("./pages/SearchPage"));
+const GenrePage = lazy(() => import("./pages/GenrePage"));
+const GenreDetailPage = lazy(() => import("./pages/GenreDetailPage"));
+const ComicDetailPage = lazy(() => import("./pages/ComicDetailPage"));
+const TypePage = lazy(() => import("./pages/TypePage"));
+const ReaderPage = lazy(() => import("./pages/ReaderPage"));
+const BookmarkPage = lazy(() => import("./pages/BookmarkPage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const RegisterPage = lazy(() => import("./pages/RegisterPage"));
+const ChangePasswordPage = lazy(() => import("./pages/ChangePasswordPage"));
+const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
+const AdminDashboardPage = lazy(() => import("./pages/admin/DashboardPage"));
+const AdminCommentsPage = lazy(() => import("./pages/admin/CommentsPage"));
+const AdminAdsPage = lazy(() => import("./pages/admin/AdsPage"));
+const AdminUsersPage = lazy(() => import("./pages/admin/UsersPage"));
+const AdminSettingsPage = lazy(() => import("./pages/admin/SettingsPage"));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="w-8 h-8 border-2 border-[#f97316] border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
+
+function SuspenseWrap({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
+}
 
 const router = createBrowserRouter([
   {
     element: <Layout />,
     children: [
-      { path: "/", element: <HomePage /> },
-      { path: "/terbaru", element: <LatestPage /> },
-      { path: "/search", element: <SearchPage /> },
-      { path: "/genre", element: <GenrePage /> },
-      { path: "/genre/:slug", element: <GenreDetailPage /> },
-      { path: "/type/:type", element: <TypePage /> },
-      { path: "/komik/:slug", element: <ComicDetailPage /> },
-      { path: "/bookmark", element: <BookmarkPage /> },
-      { path: "/login", element: <LoginPage /> },
-      { path: "/register", element: <RegisterPage /> },
-      { path: "/change-password", element: <ProtectedRoute><ChangePasswordPage /></ProtectedRoute> },
+      { path: "/", element: <SuspenseWrap><HomePage /></SuspenseWrap> },
+      { path: "/terbaru", element: <SuspenseWrap><LatestPage /></SuspenseWrap> },
+      { path: "/search", element: <SuspenseWrap><SearchPage /></SuspenseWrap> },
+      { path: "/genre", element: <SuspenseWrap><GenrePage /></SuspenseWrap> },
+      { path: "/genre/:slug", element: <SuspenseWrap><GenreDetailPage /></SuspenseWrap> },
+      { path: "/type/:type", element: <SuspenseWrap><TypePage /></SuspenseWrap> },
+      { path: "/komik/:slug", element: <SuspenseWrap><ComicDetailPage /></SuspenseWrap> },
+      { path: "/bookmark", element: <SuspenseWrap><BookmarkPage /></SuspenseWrap> },
+      { path: "/login", element: <SuspenseWrap><LoginPage /></SuspenseWrap> },
+      { path: "/register", element: <SuspenseWrap><RegisterPage /></SuspenseWrap> },
+      { path: "/change-password", element: <ProtectedRoute><SuspenseWrap><ChangePasswordPage /></SuspenseWrap></ProtectedRoute> },
     ],
   },
   {
     element: <ReaderLayout />,
-    children: [{ path: "/baca/:slug", element: <ReaderPage /> }],
+    children: [{ path: "/baca/:slug", element: <SuspenseWrap><ReaderPage /></SuspenseWrap> }],
   },
   {
     element: (
-      <ProtectedRoute adminOnly>
-        <AdminLayout />
-      </ProtectedRoute>
+      <SuspenseWrap>
+        <ProtectedRoute adminOnly>
+          <AdminLayout />
+        </ProtectedRoute>
+      </SuspenseWrap>
     ),
     children: [
-      { path: "/admin", element: <AdminDashboardPage /> },
-      { path: "/admin/comments", element: <AdminCommentsPage /> },
-      { path: "/admin/ads", element: <AdminAdsPage /> },
-      { path: "/admin/users", element: <AdminUsersPage /> },
-      { path: "/admin/settings", element: <AdminSettingsPage /> },
+      { path: "/admin", element: <SuspenseWrap><AdminDashboardPage /></SuspenseWrap> },
+      { path: "/admin/comments", element: <SuspenseWrap><AdminCommentsPage /></SuspenseWrap> },
+      { path: "/admin/ads", element: <SuspenseWrap><AdminAdsPage /></SuspenseWrap> },
+      { path: "/admin/users", element: <SuspenseWrap><AdminUsersPage /></SuspenseWrap> },
+      { path: "/admin/settings", element: <SuspenseWrap><AdminSettingsPage /></SuspenseWrap> },
     ],
   },
 ]);

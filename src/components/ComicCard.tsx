@@ -8,8 +8,8 @@ export function extractSlug(href: string): string {
   return href.replace(/^\/(manga|series)\//, "").replace(/^\//, "");
 }
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1500;
+const MAX_RETRIES = 2;
+const RETRY_DELAY = 1000;
 
 function useImageRetry(src: string) {
   const [imgError, setImgError] = useState(false);
@@ -56,6 +56,7 @@ export default function ComicCard({ comic }: { comic: Comic }) {
             src={comic.image}
             alt={comic.title}
             loading="lazy"
+            decoding="async"
             referrerPolicy="no-referrer"
             className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
               imgLoaded ? "opacity-100" : "opacity-0"
@@ -111,6 +112,7 @@ export function UpdateCard({ comic }: { comic: Comic }) {
             src={comic.image}
             alt={comic.title}
             loading="lazy"
+            decoding="async"
             referrerPolicy="no-referrer"
             className={`w-full h-full object-cover ${imgLoaded ? "opacity-100" : "opacity-0"} transition-opacity`}
             onLoad={() => setImgLoaded(true)}
@@ -164,6 +166,7 @@ export function RecommendCard({ comic }: { comic: Comic }) {
             src={comic.image}
             alt={comic.title}
             loading="lazy"
+            decoding="async"
             referrerPolicy="no-referrer"
             className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
               imgLoaded ? "opacity-100" : "opacity-0"

@@ -23,15 +23,42 @@ export function setProvider(provider: string) {
   try { localStorage.setItem("comic-provider", provider); } catch {}
 }
 
-// Generate HMAC token for API authentication
+// In-memory response cache with TTL
+const responseCache = new Map<string, { data: unknown; expires: number }>();
+const CACHE_TTL = 3 * 60 * 1000; // 3 minutes
+const inflight = new Map<string, Promise<unknown>>();
+
+function getCached<T>(key: string): T | null {
+  const entry = responseCache.get(key);
+  if (entry && entry.expires > Date.now()) return entry.data as T;
+  if (entry) responseCache.delete(key);
+  return null;
+}
+
+function setCache(key: string, data: unknown, ttl = CACHE_TTL) {
+  responseCache.set(key, { data, expires: Date.now() + ttl });
+  // Limit cache size
+  if (responseCache.size > 100) {
+    const first = responseCache.keys().next().value;
+    if (first) responseCache.delete(first);
+  }
+}
+
+// Generate HMAC token for API authentication — cache the CryptoKey
+let cachedKey: CryptoKey | null = null;
+let cachedKeySecret = "";
+
 async function generateAuthHeaders(): Promise<Record<string, string>> {
   if (!API_SECRET) return {};
   const timestamp = String(Date.now());
   const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw", encoder.encode(API_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
-  );
-  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(timestamp));
+  if (!cachedKey || cachedKeySecret !== API_SECRET) {
+    cachedKey = await crypto.subtle.importKey(
+      "raw", encoder.encode(API_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+    );
+    cachedKeySecret = API_SECRET;
+  }
+  const signature = await crypto.subtle.sign("HMAC", cachedKey, encoder.encode(timestamp));
   const token = Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
   return { "X-Api-Token": token, "X-Api-Timestamp": timestamp };
 }
@@ -144,37 +171,66 @@ function buildUrl(endpoint: string, provider = currentProvider): string {
 const FETCH_TIMEOUT = 8000;
 
 async function fetchApi<T>(endpoint: string): Promise<ApiResponse<T>> {
-  const url = buildUrl(endpoint);
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
-  try {
-    const authHeaders = await generateAuthHeaders();
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: { ...authHeaders },
-    });
-    if (!res.ok) throw new Error(`API error: ${res.status}`);
-    return res.json();
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  const cacheKey = `${endpoint}|${currentProvider}`;
+  const cached = getCached<ApiResponse<T>>(cacheKey);
+  if (cached) return cached;
+
+  // Deduplicate identical in-flight requests
+  if (inflight.has(cacheKey)) return inflight.get(cacheKey) as Promise<ApiResponse<T>>;
+
+  const promise = (async () => {
+    const url = buildUrl(endpoint);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+    try {
+      const authHeaders = await generateAuthHeaders();
+      const res = await fetch(url, {
+        signal: controller.signal,
+        headers: { ...authHeaders },
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const data: ApiResponse<T> = await res.json();
+      setCache(cacheKey, data);
+      return data;
+    } finally {
+      clearTimeout(timeoutId);
+      inflight.delete(cacheKey);
+    }
+  })();
+
+  inflight.set(cacheKey, promise);
+  return promise;
 }
 
 async function fetchApiWithProvider<T>(endpoint: string, provider: string): Promise<ApiResponse<T>> {
-  const url = buildUrl(endpoint, provider);
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
-  try {
-    const authHeaders = await generateAuthHeaders();
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: { ...authHeaders },
-    });
-    if (!res.ok) throw new Error(`API error: ${res.status}`);
-    return res.json();
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  const cacheKey = `${endpoint}|${provider}`;
+  const cached = getCached<ApiResponse<T>>(cacheKey);
+  if (cached) return cached;
+
+  if (inflight.has(cacheKey)) return inflight.get(cacheKey) as Promise<ApiResponse<T>>;
+
+  const promise = (async () => {
+    const url = buildUrl(endpoint, provider);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+    try {
+      const authHeaders = await generateAuthHeaders();
+      const res = await fetch(url, {
+        signal: controller.signal,
+        headers: { ...authHeaders },
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const data: ApiResponse<T> = await res.json();
+      setCache(cacheKey, data);
+      return data;
+    } finally {
+      clearTimeout(timeoutId);
+      inflight.delete(cacheKey);
+    }
+  })();
+
+  inflight.set(cacheKey, promise);
+  return promise;
 }
 
 // Fetch from all providers and merge results with dedup
