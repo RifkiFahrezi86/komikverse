@@ -162,7 +162,7 @@ export default function AdSlot({ name, className = "" }: { name: string; classNa
     <div className={`ad-slot relative ${className}`}>
       <button
         onClick={() => setDismissed(true)}
-        className="absolute -top-2 -right-2 z-10 w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-black/80 border border-white/20 flex items-center justify-center text-white/90 hover:text-white hover:bg-red-600 transition-all shadow-lg"
+        className="absolute top-1 right-1 z-10 w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-black/80 border border-white/20 flex items-center justify-center text-white/90 hover:text-white hover:bg-red-600 transition-all shadow-lg"
         title="Tutup iklan"
         aria-label="Tutup iklan"
       >
