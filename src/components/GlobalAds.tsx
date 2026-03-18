@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useAuth } from "../lib/auth";
-import { fetchAds } from "./AdSlot";
+import { fetchAds, injectAdCode } from "./AdSlot";
 
 /**
  * Renders global ad scripts (popunder, social bar) that apply to all pages.
@@ -26,18 +26,8 @@ export default function GlobalAds() {
       injectedRef.current = true;
       codes.forEach((code) => {
         const wrapper = document.createElement("div");
-        wrapper.innerHTML = code;
-        // Execute scripts
-        const scripts = wrapper.querySelectorAll("script");
-        scripts.forEach((oldScript) => {
-          const newScript = document.createElement("script");
-          Array.from(oldScript.attributes).forEach((attr) =>
-            newScript.setAttribute(attr.name, attr.value)
-          );
-          newScript.textContent = oldScript.textContent;
-          oldScript.parentNode?.replaceChild(newScript, oldScript);
-        });
         container.appendChild(wrapper);
+        injectAdCode(wrapper, code);
       });
     });
 

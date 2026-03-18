@@ -27,44 +27,55 @@ async function fetchAds(): Promise<Record<string, string>> {
 // Invalidate cache periodically (5 minutes)
 setInterval(() => { adsCache = null; adsFetchPromise = null; }, 5 * 60 * 1000);
 
-// Export for GlobalAds to use
+// Export for GlobalAds and PopupAd to use
 export { fetchAds };
+
+/**
+ * Safely inject ad HTML into a container element.
+ * Inserts non-script nodes first (divs, containers), then creates
+ * script elements in order so they actually execute.
+ */
+export function injectAdCode(container: HTMLElement, code: string) {
+  container.innerHTML = "";
+  const temp = document.createElement("div");
+  temp.innerHTML = code;
+
+  while (temp.firstChild) {
+    const node = temp.firstChild;
+    if (node.nodeType === 1 && (node as Element).tagName === "SCRIPT") {
+      const old = node as HTMLScriptElement;
+      temp.removeChild(old);
+      const s = document.createElement("script");
+      Array.from(old.attributes).forEach((a) => s.setAttribute(a.name, a.value));
+      if (old.textContent) s.textContent = old.textContent;
+      container.appendChild(s);
+    } else {
+      container.appendChild(node);
+    }
+  }
+}
 
 export default function AdSlot({ name, className = "" }: { name: string; className?: string }) {
   const { isAdFree } = useAuth();
-  const [html, setHtml] = useState("");
+  const [code, setCode] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
+  const injectedRef = useRef(false);
 
   useEffect(() => {
     if (isAdFree) return;
     fetchAds().then((ads) => {
-      if (ads[name]) setHtml(ads[name]);
+      if (ads[name]) setCode(ads[name]);
     });
   }, [name, isAdFree]);
 
-  // Execute scripts in ad HTML
+  // Inject ad code and execute scripts properly
   useEffect(() => {
-    if (!html || !containerRef.current) return;
-    const container = containerRef.current;
-    // Re-insert script tags so they execute
-    const scripts = container.querySelectorAll("script");
-    scripts.forEach((oldScript) => {
-      const newScript = document.createElement("script");
-      Array.from(oldScript.attributes).forEach((attr) =>
-        newScript.setAttribute(attr.name, attr.value)
-      );
-      newScript.textContent = oldScript.textContent;
-      oldScript.parentNode?.replaceChild(newScript, oldScript);
-    });
-  }, [html]);
+    if (!code || !containerRef.current || injectedRef.current) return;
+    injectedRef.current = true;
+    injectAdCode(containerRef.current, code);
+  }, [code]);
 
-  if (isAdFree || !html) return null;
+  if (isAdFree || !code) return null;
 
-  return (
-    <div
-      ref={containerRef}
-      className={`ad-slot overflow-hidden ${className}`}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
-  );
+  return <div ref={containerRef} className={`ad-slot overflow-hidden ${className}`} />;
 }
