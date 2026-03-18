@@ -12,19 +12,19 @@ interface AdSlot {
   is_active: boolean;
 }
 
-const SLOT_LABELS: Record<string, { label: string; desc: string }> = {
-  "home-top": { label: "Home - Top", desc: "Banner at the top of homepage" },
-  "home-mid": { label: "Home - Middle", desc: "Between update and popular sections" },
-  "detail-sidebar": { label: "Detail - Sidebar", desc: "Sidebar on comic detail page" },
-  "detail-before-chapters": { label: "Detail - Before Chapters", desc: "Before the chapter list" },
-  "reader-top": { label: "Reader - Top", desc: "Above chapter images" },
-  "reader-bottom": { label: "Reader - Bottom", desc: "Below chapter images" },
-  "reader-between": { label: "Reader - Between Images", desc: "Inserted between chapter images (every 10 images)" },
-  "popup-global": { label: "Popup / Interstitial (Global)", desc: "Popup ad shown on all pages" },
-  "popunder-global": { label: "Popunder (Global)", desc: "Popunder ad — opens new tab on first click (all pages)" },
-  "socialbar-global": { label: "Social Bar (Global)", desc: "Sticky social bar shown on all pages (above body close)" },
-  "native-home": { label: "Native Banner - Home", desc: "Native banner widget on homepage" },
-  "native-detail": { label: "Native Banner - Detail", desc: "Native banner widget on comic detail page" },
+const SLOT_LABELS: Record<string, { label: string; desc: string; adType: string }> = {
+  "home-top": { label: "Home - Top", desc: "Banner di bagian atas homepage", adType: "Banner 728×90" },
+  "home-mid": { label: "Home - Middle", desc: "Di antara bagian update dan populer", adType: "Banner 728×90" },
+  "detail-sidebar": { label: "Detail - Sidebar", desc: "Sidebar di halaman detail komik", adType: "Banner 300×250" },
+  "detail-before-chapters": { label: "Detail - Before Chapters", desc: "Sebelum daftar chapter", adType: "Banner 728×90" },
+  "reader-top": { label: "Reader - Top", desc: "Di atas gambar chapter", adType: "Banner 728×90" },
+  "reader-bottom": { label: "Reader - Bottom", desc: "Di bawah gambar chapter", adType: "Banner 728×90" },
+  "reader-between": { label: "Reader - Between Images", desc: "Disisipkan antar gambar chapter (setiap 10 gambar)", adType: "Banner 728×90" },
+  "popup-global": { label: "Popup / Interstitial (Global)", desc: "Iklan popup ditampilkan di semua halaman", adType: "Popup / Interstitial" },
+  "popunder-global": { label: "Popunder (Global)", desc: "Iklan popunder — buka tab baru saat klik pertama (semua halaman)", adType: "Popunder" },
+  "socialbar-global": { label: "Social Bar (Global)", desc: "Social bar sticky di semua halaman", adType: "Social Bar" },
+  "native-home": { label: "Native Banner - Home", desc: "Widget native banner di homepage", adType: "Native Banner" },
+  "native-detail": { label: "Native Banner - Detail", desc: "Widget native banner di halaman detail komik", adType: "Native Banner" },
 };
 
 export default function AdminAdsPage() {
@@ -92,20 +92,23 @@ export default function AdminAdsPage() {
   return (
     <div>
       <h2 className="font-display text-lg font-bold text-white/85 flex items-center gap-2 mb-2">
-        <Megaphone size={20} className="text-[#f97316]" /> Manage Ads
+        <Megaphone size={20} className="text-[#f97316]" /> Kelola Iklan
       </h2>
       <p className="text-xs text-[#5c5c6e] font-body mb-5">
-        Paste ad code (Google Adsense, etc.) into the available slots. Ads can be enabled/disabled per position.
+        Tempel kode iklan (Adsterra, dll.) ke slot yang tersedia. Lihat label <span className="text-[#f97316] font-bold">tipe iklan</span> di setiap slot untuk mengetahui format yang sesuai.
       </p>
 
       <div className="space-y-3">
         {ads.map((ad) => {
-          const meta = SLOT_LABELS[ad.slot_name] || { label: ad.slot_name, desc: "" };
+          const meta = SLOT_LABELS[ad.slot_name] || { label: ad.slot_name, desc: "", adType: "Unknown" };
           return (
             <div key={ad.id} className="bg-[#12121a] rounded-xl border border-white/[0.04] p-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h3 className="text-sm font-body font-medium text-white/85">{meta.label}</h3>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h3 className="text-sm font-body font-medium text-white/85">{meta.label}</h3>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#f97316]/15 text-[#f97316]">{meta.adType}</span>
+                  </div>
                   <p className="text-[10px] font-body text-[#5c5c6e]">{meta.desc}</p>
                 </div>
                 <button
@@ -130,7 +133,7 @@ export default function AdminAdsPage() {
               <textarea
                 value={editCode[ad.id] || ""}
                 onChange={(e) => setEditCode((p) => ({ ...p, [ad.id]: e.target.value }))}
-                placeholder="Paste ad code here... (HTML/script Adsense)"
+                placeholder="Tempel kode iklan di sini... (HTML/script Adsterra)"
                 rows={4}
                 className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.04] text-xs font-mono text-white placeholder-[#5c5c6e] focus:outline-none focus:border-[#f97316]/30 transition-colors resize-y"
               />
