@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ImageOff } from "lucide-react";
 import type { Comic } from "../lib/api";
@@ -16,12 +16,22 @@ function useImageRetry(src: string) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const retryCount = useRef(0);
   const imgRef = useRef<HTMLImageElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const handleImgError = useCallback(() => {
     if (retryCount.current < MAX_RETRIES) {
       retryCount.current += 1;
-      setTimeout(() => {
-        if (imgRef.current) {
+      timerRef.current = setTimeout(() => {
+        if (mountedRef.current && imgRef.current) {
           const base = src.split("?")[0];
           imgRef.current.src = `${base}?retry=${retryCount.current}&t=${Date.now()}`;
         }

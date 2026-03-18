@@ -188,6 +188,7 @@ async function fetchApi<T>(endpoint: string): Promise<ApiResponse<T>> {
         signal: controller.signal,
         headers: { ...authHeaders },
       });
+      if (res.status === 429) throw new Error("Terlalu banyak permintaan. Coba lagi nanti.");
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data: ApiResponse<T> = await res.json();
       setCache(cacheKey, data);
@@ -219,6 +220,7 @@ async function fetchApiWithProvider<T>(endpoint: string, provider: string): Prom
         signal: controller.signal,
         headers: { ...authHeaders },
       });
+      if (res.status === 429) throw new Error("Terlalu banyak permintaan. Coba lagi nanti.");
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data: ApiResponse<T> = await res.json();
       setCache(cacheKey, data);
