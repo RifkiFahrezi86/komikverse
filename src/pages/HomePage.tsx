@@ -158,9 +158,6 @@ export default function HomePage() {
         {/* Ad Slot - Home Top */}
         <AdSlot name="home-top" className="mb-6 rounded-xl overflow-hidden" />
 
-        {/* Native Banner - Home */}
-        <AdSlot name="native-home" className="mb-6 rounded-xl overflow-hidden" />
-
         {/* ─── Rekomendasi Section ─── */}
         <section className="mb-10">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
@@ -262,6 +259,9 @@ export default function HomePage() {
             <p className="text-sm text-[#5c5c6e] font-body py-8 text-center">Tidak ada komik populer untuk tipe ini.</p>
           )}
         </section>
+
+        {/* Native Banner - Home (di bawah Populer) */}
+        <AdSlot name="native-home" className="mb-6 rounded-xl overflow-hidden" />
       </div>
     </div>
   );
