@@ -95,7 +95,7 @@ export default function AdminLayout() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-body font-medium text-white/85 truncate">{user?.username}</p>
-              <p className="text-[10px] font-body text-[#5c5c6e] uppercase tracking-wider">{user?.role}</p>
+              <p className={`text-[10px] font-body uppercase tracking-wider ${user?.role === "owner" ? "text-yellow-400" : "text-[#5c5c6e]"}`}>{user?.role}</p>
             </div>
             <Link to="/change-password" className="text-[#5c5c6e] hover:text-[#f97316] transition-colors" title="Ganti Password">
               <KeyRound size={16} />

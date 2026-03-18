@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Users, Shield, Trash2, Loader2, KeyRound, Eye, EyeOff, X, Plus, Pencil, Check, Search, Ban, Tv } from "lucide-react";
+import { Users, Shield, Trash2, Loader2, KeyRound, Eye, EyeOff, X, Plus, Pencil, Check, Search, Ban, Tv, Crown, ShieldCheck, ShieldOff } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9rb21pa3ZlcnNlLWFwaS1hbWJlci52ZXJjZWwuYXBwL2FwaQ==");
@@ -16,7 +16,7 @@ interface UserItem {
 }
 
 export default function AdminUsersPage() {
-  const { token, user: currentUser } = useAuth();
+  const { token, user: currentUser, isOwner } = useAuth();
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<number | null>(null);
@@ -64,6 +64,22 @@ export default function AdminUsersPage() {
         body: JSON.stringify({ id: u.id, ad_free: !u.ad_free }),
       });
       if (res.ok) loadUsers();
+    } finally { setActionId(null); }
+  };
+
+  const toggleRole = async (u: UserItem) => {
+    const newRole = u.role === "admin" ? "user" : "admin";
+    const msg = newRole === "admin" ? `Jadikan ${u.username} sebagai Admin?` : `Hapus ${u.username} dari Admin?`;
+    if (!confirm(msg)) return;
+    setActionId(u.id);
+    try {
+      const res = await fetch(`${ADMIN_BASE}/admin/users`, {
+        method: "PATCH", headers,
+        body: JSON.stringify({ id: u.id, role: newRole }),
+      });
+      const data = await res.json();
+      if (!res.ok) alert(data.error || "Gagal");
+      else loadUsers();
     } finally { setActionId(null); }
   };
 
@@ -216,14 +232,15 @@ export default function AdminUsersPage() {
                       <td className="px-4 py-3 text-[#8e8ea0]">{u.email}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                          u.role === "admin" ? "bg-[#f97316]/15 text-[#f97316]" : "bg-white/[0.04] text-[#8e8ea0]"
+                          u.role === "owner" ? "bg-yellow-500/15 text-yellow-400" : u.role === "admin" ? "bg-[#f97316]/15 text-[#f97316]" : "bg-white/[0.04] text-[#8e8ea0]"
                         }`}>
+                          {u.role === "owner" && <Crown size={10} />}
                           {u.role === "admin" && <Shield size={10} />}
                           {u.role}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {u.role === "admin" ? (
+                        {u.role === "admin" || u.role === "owner" ? (
                           <span className="text-[10px] text-[#5c5c6e]">—</span>
                         ) : (
                           <button
@@ -250,6 +267,19 @@ export default function AdminUsersPage() {
                           <span className="text-[10px] text-[#5c5c6e] font-body">—</span>
                         ) : (
                           <div className="flex items-center justify-end gap-1">
+                            {isOwner && u.role !== "owner" && (
+                              <button
+                                onClick={() => toggleRole(u)}
+                                className={`p-1.5 rounded transition-colors ${
+                                  u.role === "admin"
+                                    ? "text-yellow-400 hover:bg-yellow-500/10"
+                                    : "text-emerald-400 hover:bg-emerald-500/10"
+                                }`}
+                                title={u.role === "admin" ? "Hapus dari Admin" : "Jadikan Admin"}
+                              >
+                                {u.role === "admin" ? <ShieldOff size={13} /> : <ShieldCheck size={13} />}
+                              </button>
+                            )}
                             <button
                               onClick={() => { setEditId(u.id); setEditName(u.username); }}
                               className="p-1.5 rounded text-blue-400 hover:bg-blue-500/10 transition-colors"
@@ -264,13 +294,15 @@ export default function AdminUsersPage() {
                             >
                               <KeyRound size={13} />
                             </button>
-                            <button
-                              onClick={() => deleteUser(u.id)}
-                              className="p-1.5 rounded text-red-400 hover:bg-red-500/10 transition-colors"
-                              title="Hapus"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                            {(isOwner || u.role === "user") && (
+                              <button
+                                onClick={() => deleteUser(u.id)}
+                                className="p-1.5 rounded text-red-400 hover:bg-red-500/10 transition-colors"
+                                title="Hapus"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
                           </div>
                         )}
                       </td>

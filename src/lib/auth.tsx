@@ -9,7 +9,7 @@ export interface User {
   id: number;
   username: string;
   email: string;
-  role: "user" | "admin";
+  role: "user" | "admin" | "owner";
   avatar_url?: string;
   ad_free?: boolean;
   created_at: string;
@@ -23,6 +23,7 @@ interface AuthContextType {
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   isAdmin: boolean;
+  isOwner: boolean;
   isAdFree: boolean;
 }
 
@@ -102,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, isAdmin: user?.role === "admin", isAdFree: user?.role === "admin" || user?.ad_free === true }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, isAdmin: user?.role === "admin" || user?.role === "owner", isOwner: user?.role === "owner", isAdFree: user?.role === "admin" || user?.role === "owner" || user?.ad_free === true }}>
       {children}
     </AuthContext.Provider>
   );
