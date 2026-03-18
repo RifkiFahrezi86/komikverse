@@ -4,7 +4,6 @@ import { useAuth } from "../lib/auth";
 const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9rb21pa3ZlcnNlLWFwaS1hbWJlci52ZXJjZWwuYXBwL2FwaQ==");
 const ADS_URL = API_BASE.replace(/\/api\/?$/, "/api/ads");
 
-// Cache ads globally so we don't refetch on every component mount
 let adsCache: Record<string, string> | null = null;
 let adsFetchPromise: Promise<Record<string, string>> | null = null;
 
@@ -24,23 +23,70 @@ async function fetchAds(): Promise<Record<string, string>> {
   return adsFetchPromise;
 }
 
-// Invalidate cache periodically (5 minutes)
 setInterval(() => { adsCache = null; adsFetchPromise = null; }, 5 * 60 * 1000);
 
-// Export for GlobalAds and PopupAd to use
 export { fetchAds };
 
 /**
- * Inject ad HTML+scripts into a container element.
- * Uses Range.createContextualFragment which correctly parses AND
- * executes inline/external scripts (unlike innerHTML which does not).
+ * Parse ad HTML string and inject into container.
+ * 1. Insert all non-script nodes (div containers etc.) first
+ * 2. Then execute scripts one by one in order:
+ *    - Inline scripts: eval immediately (e.g. atOptions = {...})
+ *    - External scripts: load via dynamic <script> element, wait for onload
+ * This ensures Adsterra's atOptions is set BEFORE invoke.js runs.
  */
-export function injectAdCode(container: HTMLElement, code: string) {
+export function injectAdCode(container: HTMLElement, code: string): () => void {
   container.innerHTML = "";
-  const range = document.createRange();
-  range.selectNode(container);
-  const fragment = range.createContextualFragment(code);
-  container.appendChild(fragment);
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(code, "text/html");
+
+  // Collect scripts in order, insert non-script nodes first
+  const scripts: HTMLScriptElement[] = [];
+  const allNodes = doc.body.childNodes;
+
+  for (let i = 0; i < allNodes.length; i++) {
+    const node = allNodes[i];
+    if (node.nodeType === 1 && (node as Element).tagName === "SCRIPT") {
+      scripts.push(node as HTMLScriptElement);
+    } else {
+      container.appendChild(document.importNode(node, true));
+    }
+  }
+
+  // Track created script elements for cleanup
+  const createdScripts: HTMLScriptElement[] = [];
+  let cancelled = false;
+
+  // Execute scripts sequentially
+  function runNext(index: number) {
+    if (cancelled || index >= scripts.length) return;
+    const old = scripts[index];
+    const el = document.createElement("script");
+
+    // Copy attributes
+    Array.from(old.attributes).forEach((a) => el.setAttribute(a.name, a.value));
+
+    if (old.src) {
+      // External script — wait for load before running next
+      el.onload = () => runNext(index + 1);
+      el.onerror = () => runNext(index + 1);
+      container.appendChild(el);
+    } else {
+      // Inline script — execute immediately
+      el.textContent = old.textContent;
+      container.appendChild(el);
+      runNext(index + 1);
+    }
+    createdScripts.push(el);
+  }
+
+  runNext(0);
+
+  // Return cleanup function
+  return () => {
+    cancelled = true;
+    createdScripts.forEach((s) => s.remove());
+  };
 }
 
 export default function AdSlot({ name, className = "" }: { name: string; className?: string }) {
@@ -56,11 +102,11 @@ export default function AdSlot({ name, className = "" }: { name: string; classNa
     });
   }, [name, isAdFree]);
 
-  // Inject ad code and execute scripts properly
   useEffect(() => {
     if (!code || !containerRef.current || injectedRef.current) return;
     injectedRef.current = true;
-    injectAdCode(containerRef.current, code);
+    const cleanup = injectAdCode(containerRef.current, code);
+    return cleanup;
   }, [code]);
 
   if (isAdFree || !code) return null;
