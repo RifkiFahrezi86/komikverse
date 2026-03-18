@@ -324,6 +324,9 @@ export default function ComicDetailPage() {
       {/* Ad Slot - Sidebar */}
       <AdSlot name="detail-sidebar" className="mt-4 rounded-xl overflow-hidden" />
 
+      {/* Native Banner - Detail */}
+      <AdSlot name="native-detail" className="mt-4 rounded-xl overflow-hidden" />
+
       {/* Comment Section */}
       {slug && <CommentSection comicSlug={slug} />}
     </div>

@@ -158,6 +158,9 @@ export default function HomePage() {
         {/* Ad Slot - Home Top */}
         <AdSlot name="home-top" className="mb-6 rounded-xl overflow-hidden" />
 
+        {/* Native Banner - Home */}
+        <AdSlot name="native-home" className="mb-6 rounded-xl overflow-hidden" />
+
         {/* ─── Rekomendasi Section ─── */}
         <section className="mb-10">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
