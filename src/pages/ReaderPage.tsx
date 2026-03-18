@@ -172,6 +172,7 @@ export default function ReaderPage() {
         className={`fixed top-0 left-0 right-0 z-50 bg-[#0a0a0f]/95 backdrop-blur-xl border-b border-white/[0.04] transition-transform duration-300 ${
           navVisible ? "translate-y-0" : "-translate-y-full"
         }`}
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="max-w-4xl mx-auto flex items-center justify-between px-4 py-2.5">
@@ -265,7 +266,7 @@ export default function ReaderPage() {
           }`}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="bg-[#0a0a0f]/95 backdrop-blur-xl border-t border-white/[0.04]">
+          <div className="bg-[#0a0a0f]/95 backdrop-blur-xl border-t border-white/[0.04]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
             <div className="max-w-4xl mx-auto px-4 py-3">
               <div className="flex items-center gap-2">
                 <button
@@ -309,7 +310,7 @@ export default function ReaderPage() {
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
           className={`fixed right-4 z-50 p-2.5 rounded-lg bg-[#16161f]/90 border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/30 transition-all ${
-            navVisible ? "bottom-20 opacity-100" : "bottom-4 opacity-0 pointer-events-none"
+            navVisible ? "bottom-24 opacity-100" : "bottom-4 opacity-0 pointer-events-none"
           }`}
           title="Scroll ke atas"
         >

@@ -51,7 +51,7 @@ export default function AdminLayout() {
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 h-14 border-b border-white/[0.04]">
+        <div className="flex items-center justify-between px-5 h-14 border-b border-white/[0.04]" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
           <Link to="/" className="flex items-center gap-2">
             <div className="w-7 h-7 bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-lg flex items-center justify-center">
               <BookOpen size={14} className="text-white" />
@@ -88,7 +88,7 @@ export default function AdminLayout() {
         </nav>
 
         {/* User info */}
-        <div className="p-3 border-t border-white/[0.04]">
+        <div className="p-3 border-t border-white/[0.04]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <div className="flex items-center gap-3 px-3 py-2">
             <div className="w-8 h-8 rounded-full bg-[#f97316]/20 flex items-center justify-center text-[#f97316] text-xs font-bold font-body">
               {user?.username?.charAt(0).toUpperCase()}
@@ -110,7 +110,7 @@ export default function AdminLayout() {
       {/* Main content */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 h-14 bg-[#0a0a0f]/95 backdrop-blur-xl border-b border-white/[0.04] flex items-center justify-between px-4 lg:px-6">
+        <header className="sticky top-0 z-30 h-14 bg-[#0a0a0f]/95 backdrop-blur-xl border-b border-white/[0.04] flex items-center justify-between px-4 lg:px-6" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
           <div className="flex items-center gap-3">
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-[#8e8ea0] hover:text-white">
               <Menu size={20} />
