@@ -138,6 +138,7 @@ export function injectAdCode(container: HTMLElement, code: string): () => void {
 export default function AdSlot({ name, className = "" }: { name: string; className?: string }) {
   const { isAdFree } = useAuth();
   const [code, setCode] = useState("");
+  const [dismissed, setDismissed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const injectedRef = useRef(false);
 
@@ -149,13 +150,25 @@ export default function AdSlot({ name, className = "" }: { name: string; classNa
   }, [name, isAdFree]);
 
   useEffect(() => {
-    if (!code || !containerRef.current || injectedRef.current) return;
+    if (!code || !containerRef.current || injectedRef.current || dismissed) return;
     injectedRef.current = true;
     const cleanup = injectAdCode(containerRef.current, code);
     return cleanup;
-  }, [code]);
+  }, [code, dismissed]);
 
-  if (isAdFree || !code) return null;
+  if (isAdFree || !code || dismissed) return null;
 
-  return <div ref={containerRef} className={`ad-slot overflow-hidden ${className}`} />;
+  return (
+    <div className={`ad-slot relative group ${className}`}>
+      <button
+        onClick={() => setDismissed(true)}
+        className="absolute top-1 right-1 z-10 w-6 h-6 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-black/80 transition-all opacity-0 group-hover:opacity-100"
+        title="Tutup iklan"
+        aria-label="Tutup iklan"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div ref={containerRef} className="overflow-hidden" />
+    </div>
+  );
 }
