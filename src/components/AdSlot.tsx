@@ -27,65 +27,111 @@ setInterval(() => { adsCache = null; adsFetchPromise = null; }, 5 * 60 * 1000);
 
 export { fetchAds };
 
+interface ParsedPart {
+  type: "html" | "script-inline" | "script-external";
+  content: string; // For html: the HTML string. For inline: script body. For external: src URL.
+  attrs: string; // raw attributes string for script tags
+}
+
 /**
- * Parse ad HTML string and inject into container.
- * 1. Insert all non-script nodes (div containers etc.) first
- * 2. Then execute scripts one by one in order:
- *    - Inline scripts: eval immediately (e.g. atOptions = {...})
- *    - External scripts: load via dynamic <script> element, wait for onload
- * This ensures Adsterra's atOptions is set BEFORE invoke.js runs.
+ * Parse ad code string into parts, preserving order.
+ * Splits script tags from non-script HTML so we can handle each correctly.
+ */
+function parseAdCode(code: string): ParsedPart[] {
+  const parts: ParsedPart[] = [];
+  const scriptRegex = /<script([^>]*)>([\s\S]*?)<\/script>/gi;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = scriptRegex.exec(code)) !== null) {
+    // HTML before this script
+    if (match.index > lastIndex) {
+      const html = code.slice(lastIndex, match.index).trim();
+      if (html) parts.push({ type: "html", content: html, attrs: "" });
+    }
+
+    const attrs = match[1].trim();
+    const body = match[2].trim();
+    const srcMatch = attrs.match(/src\s*=\s*["']([^"']+)["']/i);
+
+    if (srcMatch) {
+      // External script
+      let src = srcMatch[1];
+      // Fix protocol-relative URLs
+      if (src.startsWith("//")) src = "https:" + src;
+      parts.push({ type: "script-external", content: src, attrs });
+    } else if (body) {
+      // Inline script
+      parts.push({ type: "script-inline", content: body, attrs });
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Remaining HTML after last script
+  if (lastIndex < code.length) {
+    const html = code.slice(lastIndex).trim();
+    if (html) parts.push({ type: "html", content: html, attrs: "" });
+  }
+
+  return parts;
+}
+
+/**
+ * Inject ad code into a container element.
+ * - HTML parts are inserted via innerHTML
+ * - Inline scripts are created as script elements with textContent
+ * - External scripts are loaded sequentially (wait for onload before next)
  */
 export function injectAdCode(container: HTMLElement, code: string): () => void {
   container.innerHTML = "";
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(code, "text/html");
-
-  // Collect scripts in order, insert non-script nodes first
-  const scripts: HTMLScriptElement[] = [];
-  const allNodes = doc.body.childNodes;
-
-  for (let i = 0; i < allNodes.length; i++) {
-    const node = allNodes[i];
-    if (node.nodeType === 1 && (node as Element).tagName === "SCRIPT") {
-      scripts.push(node as HTMLScriptElement);
-    } else {
-      container.appendChild(document.importNode(node, true));
-    }
-  }
-
-  // Track created script elements for cleanup
-  const createdScripts: HTMLScriptElement[] = [];
+  const parts = parseAdCode(code);
+  const created: HTMLElement[] = [];
   let cancelled = false;
 
-  // Execute scripts sequentially
   function runNext(index: number) {
-    if (cancelled || index >= scripts.length) return;
-    const old = scripts[index];
-    const el = document.createElement("script");
+    if (cancelled || index >= parts.length) return;
+    const part = parts[index];
 
-    // Copy attributes
-    Array.from(old.attributes).forEach((a) => el.setAttribute(a.name, a.value));
+    if (part.type === "html") {
+      const div = document.createElement("div");
+      div.innerHTML = part.content;
+      // Move children directly into container
+      while (div.firstChild) {
+        created.push(div.firstChild as HTMLElement);
+        container.appendChild(div.firstChild);
+      }
+      runNext(index + 1);
+    } else if (part.type === "script-inline") {
+      const el = document.createElement("script");
+      el.textContent = part.content;
+      container.appendChild(el);
+      created.push(el);
+      runNext(index + 1);
+    } else if (part.type === "script-external") {
+      const el = document.createElement("script");
+      // Copy relevant attributes (async, data-cfasync, type, etc)
+      const attrStr = part.attrs;
+      if (/async/i.test(attrStr)) el.async = true;
+      const dataCf = attrStr.match(/data-cfasync\s*=\s*["']([^"']+)["']/i);
+      if (dataCf) el.setAttribute("data-cfasync", dataCf[1]);
+      const typeMatch = attrStr.match(/type\s*=\s*["']([^"']+)["']/i);
+      if (typeMatch) el.type = typeMatch[1];
 
-    if (old.src) {
-      // External script — wait for load before running next
+      el.src = part.content;
       el.onload = () => runNext(index + 1);
       el.onerror = () => runNext(index + 1);
       container.appendChild(el);
-    } else {
-      // Inline script — execute immediately
-      el.textContent = old.textContent;
-      container.appendChild(el);
-      runNext(index + 1);
+      created.push(el);
+      // Don't call runNext here — wait for onload/onerror
     }
-    createdScripts.push(el);
   }
 
   runNext(0);
 
-  // Return cleanup function
   return () => {
     cancelled = true;
-    createdScripts.forEach((s) => s.remove());
+    created.forEach((el) => el.remove());
   };
 }
 

@@ -8,6 +8,9 @@ import { fetchAds, injectAdCode } from "./AdSlot";
  * Uses the "popup-global" ad slot from the database.
  * Shows once per session (sessionStorage), dismissed with close button.
  * Appears 3 seconds after page load so content loads first.
+ *
+ * NOTE: This slot should contain a VISUAL ad (Banner, Native Banner).
+ * Do NOT put Popunder/Social Bar code here — those are invisible scripts.
  */
 export default function PopupAd() {
   const { isAdFree, loading } = useAuth();
@@ -16,7 +19,6 @@ export default function PopupAd() {
   const adRef = useRef<HTMLDivElement>(null);
   const injectedRef = useRef(false);
 
-  // Fetch ad code after delay
   useEffect(() => {
     if (loading || isAdFree) return;
     if (sessionStorage.getItem("kv_popup_closed")) return;
@@ -25,6 +27,11 @@ export default function PopupAd() {
       fetchAds().then((ads) => {
         const c = ads["popup-global"];
         if (!c) return;
+        // Skip if code is a Popunder/Social Bar (no visual content)
+        // These only contain a single external script with no atOptions or container div
+        if (!c.includes("atOptions") && !c.includes("container-") && !c.includes("<div")) {
+          return;
+        }
         setCode(c);
         setVisible(true);
       });
@@ -33,7 +40,6 @@ export default function PopupAd() {
     return () => clearTimeout(timer);
   }, [isAdFree, loading]);
 
-  // Inject ad AFTER the popup DOM is rendered
   useEffect(() => {
     if (!visible || !code || !adRef.current || injectedRef.current) return;
     injectedRef.current = true;
@@ -54,7 +60,6 @@ export default function PopupAd() {
         className="relative max-w-[750px] w-full bg-[#16161f] rounded-xl border border-white/[0.08] shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button */}
         <button
           onClick={close}
           className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white/80 hover:text-white hover:bg-black/80 transition-colors"
@@ -62,8 +67,6 @@ export default function PopupAd() {
         >
           <X size={18} />
         </button>
-
-        {/* Ad content */}
         <div ref={adRef} className="p-4 flex items-center justify-center min-h-[200px]" />
       </div>
     </div>
