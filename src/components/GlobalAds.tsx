@@ -3,9 +3,9 @@ import { useAuth } from "../lib/auth";
 import { fetchAds, injectAdCode } from "./AdSlot";
 
 /**
- * Renders global ad scripts (popunder, social bar) that apply to all pages.
- * These are injected once and persist across navigation.
- * Hidden for ad-free users (logged-in users with ad_free=true, or admins).
+ * Renders global ad scripts (popunder) that apply to all pages.
+ * Injected once and persists across navigation.
+ * Social Bar removed — creates intrusive push notification popups.
  */
 export default function GlobalAds() {
   const { isAdFree, loading } = useAuth();
@@ -19,7 +19,8 @@ export default function GlobalAds() {
       const container = containerRef.current;
       if (!container) return;
 
-      const slots = ["popunder-global", "socialbar-global"];
+      // Only popunder — Social Bar disabled (causes intrusive push notifications)
+      const slots = ["popunder-global"];
       const codes = slots.map((s) => ads[s]).filter(Boolean);
       if (codes.length === 0) return;
 

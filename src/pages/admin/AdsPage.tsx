@@ -89,7 +89,7 @@ const SLOT_LABELS: Record<string, { label: string; desc: string; adType: string;
   "reader-between": { label: "Reader - Between Images", desc: "Disisipkan antar gambar chapter (setiap 10 gambar)", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)" },
   "popup-global": { label: "Popup / Interstitial (Global)", desc: "Popup iklan visual. Gunakan kode Banner 728×90 atau Native Banner (BUKAN Popunder/Social Bar)", adType: "Banner / Native", hint: "Gunakan kode: Banner 728×90 atau Native Banner (yang tampil visual)" },
   "popunder-global": { label: "Popunder (Global)", desc: "Buka tab baru saat klik pertama. Tidak menampilkan gambar.", adType: "Popunder", hint: "Gunakan kode: Popunder (script tunggal tanpa atOptions)" },
-  "socialbar-global": { label: "Social Bar (Global)", desc: "Social bar sticky di semua halaman", adType: "Social Bar", hint: "Gunakan kode: Social Bar (script tunggal tanpa atOptions)" },
+  "socialbar-global": { label: "Social Bar (Global)", desc: "⛔ DINONAKTIFKAN — Social Bar membuat notifikasi push yang mengganggu pengunjung. Kode tetap tersimpan tapi tidak dimuat di website.", adType: "Social Bar", hint: "Social Bar dinonaktifkan dari kode frontend karena mengganggu pengunjung" },
   "native-home": { label: "Native Banner - Home", desc: "Widget native banner di homepage", adType: "Native Banner", hint: "Gunakan kode: Native Banner (dengan container div dan data-cfasync)" },
   "native-detail": { label: "Native Banner - Detail", desc: "Widget native banner di halaman detail komik", adType: "Native Banner", hint: "Gunakan kode: Native Banner (dengan container div dan data-cfasync)" },
 };
