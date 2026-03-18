@@ -12,40 +12,40 @@ import { fetchAds, injectAdCode } from "./AdSlot";
 export default function PopupAd() {
   const { isAdFree, loading } = useAuth();
   const [visible, setVisible] = useState(false);
-  const [hasCode, setHasCode] = useState(false);
+  const [code, setCode] = useState("");
   const adRef = useRef<HTMLDivElement>(null);
   const injectedRef = useRef(false);
 
+  // Fetch ad code after delay
   useEffect(() => {
     if (loading || isAdFree) return;
-    // Only show once per session
     if (sessionStorage.getItem("kv_popup_closed")) return;
 
     const timer = setTimeout(() => {
       fetchAds().then((ads) => {
-        const code = ads["popup-global"];
-        if (!code) return;
-        setHasCode(true);
+        const c = ads["popup-global"];
+        if (!c) return;
+        setCode(c);
         setVisible(true);
-        // Inject ad code after component renders
-        requestAnimationFrame(() => {
-          if (adRef.current && !injectedRef.current) {
-            injectedRef.current = true;
-            injectAdCode(adRef.current, code);
-          }
-        });
       });
     }, 3000);
 
     return () => clearTimeout(timer);
   }, [isAdFree, loading]);
 
+  // Inject ad AFTER the popup DOM is rendered
+  useEffect(() => {
+    if (!visible || !code || !adRef.current || injectedRef.current) return;
+    injectedRef.current = true;
+    injectAdCode(adRef.current, code);
+  }, [visible, code]);
+
   const close = () => {
     setVisible(false);
     sessionStorage.setItem("kv_popup_closed", "1");
   };
 
-  if (!visible || !hasCode || isAdFree) return null;
+  if (!visible || !code || isAdFree) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4" onClick={close}>
