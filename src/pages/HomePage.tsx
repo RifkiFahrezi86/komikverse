@@ -259,9 +259,6 @@ export default function HomePage() {
             <p className="text-sm text-[#5c5c6e] font-body py-8 text-center">Tidak ada komik populer untuk tipe ini.</p>
           )}
         </section>
-
-        {/* Native Banner - Home (di bawah Populer) */}
-        <AdSlot name="native-home" className="mb-6 rounded-xl overflow-hidden" />
       </div>
     </div>
   );
