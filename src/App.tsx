@@ -4,25 +4,40 @@ import Layout from "./layouts/Layout";
 import ReaderLayout from "./layouts/ReaderLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+// Auto-retry dynamic import — reload page if chunk is missing (new deploy)
+function lazyRetry(importFn: () => Promise<any>) {
+  return lazy(() =>
+    importFn().catch(() => {
+      // Chunk failed to load (likely new deploy), reload once
+      const key = "chunk_reload";
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, "1");
+        window.location.reload();
+      }
+      return importFn();
+    })
+  );
+}
+
 // Lazy-load all pages for code splitting
-const HomePage = lazy(() => import("./pages/HomePage"));
-const LatestPage = lazy(() => import("./pages/LatestPage"));
-const SearchPage = lazy(() => import("./pages/SearchPage"));
-const GenrePage = lazy(() => import("./pages/GenrePage"));
-const GenreDetailPage = lazy(() => import("./pages/GenreDetailPage"));
-const ComicDetailPage = lazy(() => import("./pages/ComicDetailPage"));
-const TypePage = lazy(() => import("./pages/TypePage"));
-const ReaderPage = lazy(() => import("./pages/ReaderPage"));
-const BookmarkPage = lazy(() => import("./pages/BookmarkPage"));
-const LoginPage = lazy(() => import("./pages/LoginPage"));
-const RegisterPage = lazy(() => import("./pages/RegisterPage"));
-const ChangePasswordPage = lazy(() => import("./pages/ChangePasswordPage"));
-const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
-const AdminDashboardPage = lazy(() => import("./pages/admin/DashboardPage"));
-const AdminCommentsPage = lazy(() => import("./pages/admin/CommentsPage"));
-const AdminAdsPage = lazy(() => import("./pages/admin/AdsPage"));
-const AdminUsersPage = lazy(() => import("./pages/admin/UsersPage"));
-const AdminSettingsPage = lazy(() => import("./pages/admin/SettingsPage"));
+const HomePage = lazyRetry(() => import("./pages/HomePage"));
+const LatestPage = lazyRetry(() => import("./pages/LatestPage"));
+const SearchPage = lazyRetry(() => import("./pages/SearchPage"));
+const GenrePage = lazyRetry(() => import("./pages/GenrePage"));
+const GenreDetailPage = lazyRetry(() => import("./pages/GenreDetailPage"));
+const ComicDetailPage = lazyRetry(() => import("./pages/ComicDetailPage"));
+const TypePage = lazyRetry(() => import("./pages/TypePage"));
+const ReaderPage = lazyRetry(() => import("./pages/ReaderPage"));
+const BookmarkPage = lazyRetry(() => import("./pages/BookmarkPage"));
+const LoginPage = lazyRetry(() => import("./pages/LoginPage"));
+const RegisterPage = lazyRetry(() => import("./pages/RegisterPage"));
+const ChangePasswordPage = lazyRetry(() => import("./pages/ChangePasswordPage"));
+const AdminLayout = lazyRetry(() => import("./layouts/AdminLayout"));
+const AdminDashboardPage = lazyRetry(() => import("./pages/admin/DashboardPage"));
+const AdminCommentsPage = lazyRetry(() => import("./pages/admin/CommentsPage"));
+const AdminAdsPage = lazyRetry(() => import("./pages/admin/AdsPage"));
+const AdminUsersPage = lazyRetry(() => import("./pages/admin/UsersPage"));
+const AdminSettingsPage = lazyRetry(() => import("./pages/admin/SettingsPage"));
 
 function PageLoader() {
   return (
