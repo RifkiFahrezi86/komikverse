@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useAuth } from "../lib/auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9rb21pa3ZlcnNlLWFwaS1hbWJlci52ZXJjZWwuYXBwL2FwaQ==");
 const ADS_URL = API_BASE.replace(/\/api\/?$/, "/api/ads");
@@ -13,7 +14,7 @@ async function fetchAds(): Promise<Record<string, string>> {
   adsFetchPromise = fetch(ADS_URL)
     .then((r) => r.json())
     .then((d) => {
-      adsCache = d.data || {};
+      adsCache = d.ads || d.data || {};
       return adsCache!;
     })
     .catch(() => {
@@ -26,15 +27,20 @@ async function fetchAds(): Promise<Record<string, string>> {
 // Invalidate cache periodically (5 minutes)
 setInterval(() => { adsCache = null; adsFetchPromise = null; }, 5 * 60 * 1000);
 
+// Export for GlobalAds to use
+export { fetchAds };
+
 export default function AdSlot({ name, className = "" }: { name: string; className?: string }) {
+  const { isAdFree } = useAuth();
   const [html, setHtml] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (isAdFree) return;
     fetchAds().then((ads) => {
       if (ads[name]) setHtml(ads[name]);
     });
-  }, [name]);
+  }, [name, isAdFree]);
 
   // Execute scripts in ad HTML
   useEffect(() => {
@@ -52,7 +58,7 @@ export default function AdSlot({ name, className = "" }: { name: string; classNa
     });
   }, [html]);
 
-  if (!html) return null;
+  if (isAdFree || !html) return null;
 
   return (
     <div

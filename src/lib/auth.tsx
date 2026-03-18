@@ -11,6 +11,7 @@ export interface User {
   email: string;
   role: "user" | "admin";
   avatar_url?: string;
+  ad_free?: boolean;
   created_at: string;
 }
 
@@ -22,6 +23,7 @@ interface AuthContextType {
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   isAdmin: boolean;
+  isAdFree: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -100,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, isAdmin: user?.role === "admin" }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, isAdmin: user?.role === "admin", isAdFree: user?.role === "admin" || user?.ad_free === true }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Users, Shield, Trash2, Loader2, KeyRound, Eye, EyeOff, X, Plus, Pencil, Check, Search } from "lucide-react";
+import { Users, Shield, Trash2, Loader2, KeyRound, Eye, EyeOff, X, Plus, Pencil, Check, Search, Ban, Tv } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9rb21pa3ZlcnNlLWFwaS1hbWJlci52ZXJjZWwuYXBwL2FwaQ==");
@@ -11,6 +11,7 @@ interface UserItem {
   email: string;
   role: string;
   is_seed?: boolean;
+  ad_free?: boolean;
   created_at: string;
 }
 
@@ -52,6 +53,17 @@ export default function AdminUsersPage() {
     try {
       await fetch(`${ADMIN_BASE}/admin/users?id=${id}`, { method: "DELETE", headers });
       loadUsers();
+    } finally { setActionId(null); }
+  };
+
+  const toggleAdFree = async (u: UserItem) => {
+    setActionId(u.id);
+    try {
+      const res = await fetch(`${ADMIN_BASE}/admin/users`, {
+        method: "PATCH", headers,
+        body: JSON.stringify({ id: u.id, ad_free: !u.ad_free }),
+      });
+      if (res.ok) loadUsers();
     } finally { setActionId(null); }
   };
 
@@ -171,6 +183,7 @@ export default function AdminUsersPage() {
                   <th className="text-left text-[10px] text-[#5c5c6e] uppercase tracking-wider font-medium px-4 py-3">User</th>
                   <th className="text-left text-[10px] text-[#5c5c6e] uppercase tracking-wider font-medium px-4 py-3">Email</th>
                   <th className="text-left text-[10px] text-[#5c5c6e] uppercase tracking-wider font-medium px-4 py-3">Role</th>
+                  <th className="text-left text-[10px] text-[#5c5c6e] uppercase tracking-wider font-medium px-4 py-3">Iklan</th>
                   <th className="text-left text-[10px] text-[#5c5c6e] uppercase tracking-wider font-medium px-4 py-3">Dibuat</th>
                   <th className="text-right text-[10px] text-[#5c5c6e] uppercase tracking-wider font-medium px-4 py-3">Aksi</th>
                 </tr>
@@ -208,6 +221,24 @@ export default function AdminUsersPage() {
                           {u.role === "admin" && <Shield size={10} />}
                           {u.role}
                         </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {u.role === "admin" ? (
+                          <span className="text-[10px] text-[#5c5c6e]">—</span>
+                        ) : (
+                          <button
+                            onClick={() => toggleAdFree(u)}
+                            disabled={actionId === u.id}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                              u.ad_free
+                                ? "bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"
+                                : "bg-red-500/15 text-red-400 hover:bg-red-500/25"
+                            }`}
+                            title={u.ad_free ? "Bebas iklan — klik untuk tampilkan iklan" : "Ada iklan — klik untuk bebaskan iklan"}
+                          >
+                            {u.ad_free ? <><Tv size={10} /> Bebas Iklan</> : <><Ban size={10} /> Ada Iklan</>}
+                          </button>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-[#5c5c6e] text-xs">
                         {new Date(u.created_at).toLocaleDateString("id-ID")}
