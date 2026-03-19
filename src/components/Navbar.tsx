@@ -8,10 +8,12 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const inputRef = useRef<HTMLInputElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const mobileProfileRef = useRef<HTMLDivElement>(null);
   const { user, logout, isAdmin } = useAuth();
 
   useEffect(() => {
@@ -46,6 +48,22 @@ export default function Navbar() {
     if (userMenuOpen) document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [userMenuOpen]);
+
+  // Close mobile profile menu on click outside
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (mobileProfileRef.current && !mobileProfileRef.current.contains(e.target as Node)) {
+        setMobileProfileOpen(false);
+      }
+    };
+    if (mobileProfileOpen) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [mobileProfileOpen]);
+
+  // Close mobile profile menu on route change
+  useEffect(() => {
+    setMobileProfileOpen(false);
+  }, [location.pathname]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,12 +192,49 @@ export default function Navbar() {
           <MobileNavItem to="/terbaru" icon={<Compass size={20} />} label="Explore" active={isActive("/terbaru")} />
           <MobileNavItem to="/bookmark" icon={<Bookmark size={20} />} label="Library" active={isActive("/bookmark")} />
           <MobileNavItem to="/genre" icon={<Library size={20} />} label="Genre" active={isActive("/genre")} />
-          <MobileNavItem
-            to={user ? (isAdmin ? "/admin" : "/bookmark") : "/login"}
-            icon={<UserIcon size={20} />}
-            label={user ? user.username.slice(0, 6) : "Masuk"}
-            active={isActive("/login") || isActive("/admin")}
-          />
+          {user ? (
+            <div className="relative" ref={mobileProfileRef}>
+              <button
+                onClick={() => setMobileProfileOpen(!mobileProfileOpen)}
+                className={`flex flex-col items-center gap-0.5 px-3 py-1 transition-colors ${
+                  mobileProfileOpen ? "text-[#f97316]" : "text-[#5c5c6e]"
+                }`}
+              >
+                <UserIcon size={20} />
+                <span className="text-[10px] font-body font-medium">{user.username.slice(0, 6)}</span>
+              </button>
+              {mobileProfileOpen && (
+                <div className="absolute bottom-full right-0 mb-2 py-1 w-44 rounded-lg bg-[#16161f] border border-white/[0.06] shadow-xl z-50">
+                  <div className="px-3 py-2 border-b border-white/[0.04]">
+                    <p className="text-xs font-body font-medium text-white/85 truncate">{user.username}</p>
+                    <p className="text-[10px] font-body text-[#5c5c6e]">{user.email}</p>
+                  </div>
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      className="flex items-center gap-2 px-3 py-2 text-sm font-body text-[#8e8ea0] hover:text-white hover:bg-white/[0.04] transition-colors"
+                    >
+                      <Shield size={14} /> Admin Panel
+                    </Link>
+                  )}
+                  <Link
+                    to="/change-password"
+                    className="flex items-center gap-2 px-3 py-2 text-sm font-body text-[#8e8ea0] hover:text-white hover:bg-white/[0.04] transition-colors"
+                  >
+                    <KeyRound size={14} /> Ganti Password
+                  </Link>
+                  <button
+                    onClick={() => { logout(); setMobileProfileOpen(false); navigate("/"); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm font-body text-[#8e8ea0] hover:text-red-400 hover:bg-white/[0.04] transition-colors"
+                  >
+                    <LogOut size={14} /> Keluar
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <MobileNavItem to="/login" icon={<UserIcon size={20} />} label="Masuk" active={isActive("/login")} />
+          )}
         </div>
       </div>
 

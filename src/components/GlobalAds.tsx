@@ -1,46 +1,11 @@
-import { useEffect, useRef } from "react";
-import { useAuth } from "../lib/auth";
-import { fetchAds, injectAdCode } from "./AdSlot";
-
 /**
- * Renders global ad scripts (popunder) that apply to all pages.
- * Injected once and persists across navigation.
- * Social Bar removed — creates intrusive push notification popups.
+ * Global ad scripts container.
+ * Popunder disabled — causes intrusive redirects to spam/scam sites (tante777i.xyz, etc).
+ * Social Bar disabled — causes intrusive push notification popups.
+ * Revenue now comes from banner ad slots only (AdSlot component).
  */
 export default function GlobalAds() {
-  const { isAdFree, loading } = useAuth();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const injectedRef = useRef(false);
-
-  useEffect(() => {
-    if (loading || isAdFree || injectedRef.current) return;
-
-    fetchAds().then((ads) => {
-      const container = containerRef.current;
-      if (!container) return;
-
-      // Only popunder — Social Bar disabled (causes intrusive push notifications)
-      const slots = ["popunder-global"];
-      const codes = slots.map((s) => ads[s]).filter(Boolean);
-      if (codes.length === 0) return;
-
-      injectedRef.current = true;
-      codes.forEach((code) => {
-        const wrapper = document.createElement("div");
-        container.appendChild(wrapper);
-        injectAdCode(wrapper, code);
-      });
-    });
-
-    return () => {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = "";
-        injectedRef.current = false;
-      }
-    };
-  }, [isAdFree, loading]);
-
-  if (isAdFree) return null;
-
-  return <div ref={containerRef} className="global-ads" style={{ display: "contents" }} />;
+  // All global ad types disabled due to user complaints about redirects.
+  // Banner ads (AdSlot) on individual pages are still active.
+  return null;
 }
