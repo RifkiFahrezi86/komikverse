@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, ChevronLeft, TrendingUp, Sparkles, Clock } from "lucide-react";
+import { ChevronRight, ChevronLeft, TrendingUp, Sparkles, Clock, Play } from "lucide-react";
 import type { Comic } from "../lib/api";
 import { getPopular, getLatest, getRecommended, getPopularMore, getLatestMore, getRecommendedMore } from "../lib/api";
+import { getContinueReading } from "../lib/history";
 import ComicCard, { UpdateCard, RecommendCard } from "../components/ComicCard";
 import ComicCardSkeleton, { UpdateCardSkeleton, RecommendCardSkeleton } from "../components/ComicCardSkeleton";
 import AdSlot from "../components/AdSlot";
@@ -104,6 +105,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [recTab, setRecTab] = useState("all");
   const [popTab, setPopTab] = useState("all");
+  const [continueList] = useState(() => getContinueReading());
 
   useEffect(() => {
     async function load() {
@@ -157,6 +159,58 @@ export default function HomePage() {
 
         {/* Ad Slot - Home Top */}
         <AdSlot name="home-top" className="mb-6 rounded-xl overflow-hidden" />
+
+        {/* ─── Lanjutkan Membaca Section ─── */}
+        {continueList.length > 0 && (
+          <section className="mb-10">
+            <SectionHeader
+              title="Lanjutkan Membaca"
+              icon={<Play size={20} className="text-[#f97316]" />}
+            />
+            <HorizontalScroller>
+              {continueList.map((item) => (
+                <Link
+                  key={item.comicSlug}
+                  to={`/baca/${item.chapterSlug}`}
+                  className="shrink-0 w-[140px] group"
+                >
+                  <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2 border border-white/[0.06] bg-[#12121a]">
+                    {item.comicImage ? (
+                      <img
+                        src={item.comicImage}
+                        alt={item.comicTitle}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ) : null}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-2">
+                      <p className="text-[10px] font-body font-medium text-white/90 truncate">
+                        {item.chapterTitle}
+                      </p>
+                    </div>
+                    <div className="absolute top-2 left-2">
+                      <div className="w-6 h-6 rounded-full bg-[#f97316] flex items-center justify-center shadow-lg">
+                        <Play size={10} className="text-white ml-0.5" />
+                      </div>
+                    </div>
+                    {item.comicType && (
+                      <div className="absolute top-2 right-2">
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-body font-bold uppercase bg-black/60 text-white/80 backdrop-blur-sm">
+                          {item.comicType}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs font-body font-medium text-[#c0c0d0] group-hover:text-[#f97316] transition-colors truncate">
+                    {item.comicTitle}
+                  </p>
+                </Link>
+              ))}
+            </HorizontalScroller>
+          </section>
+        )}
 
         {/* ─── Rekomendasi Section ─── */}
         <section className="mb-10">

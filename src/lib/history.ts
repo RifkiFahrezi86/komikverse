@@ -46,6 +46,53 @@ export function recordRead(entry: Omit<ReadEntry, "readAt">) {
   saveHistory(history);
 }
 
+/** Get the last chapter read for a specific comic */
+export function getLastReadForComic(comicSlug: string): ReadEntry | null {
+  const history = getHistory();
+  const entries = history.filter((h) => h.comicSlug === comicSlug);
+  if (entries.length === 0) return null;
+  return entries.reduce((a, b) => (a.readAt > b.readAt ? a : b));
+}
+
+/** Get all read chapter slugs for a specific comic */
+export function getReadChapters(comicSlug: string): Set<string> {
+  const history = getHistory();
+  return new Set(history.filter((h) => h.comicSlug === comicSlug).map((h) => h.chapterSlug));
+}
+
+/** Get recently read comics for "Continue Reading" section */
+export function getContinueReading(): {
+  comicSlug: string;
+  comicTitle: string;
+  comicImage: string;
+  comicType?: string;
+  chapterSlug: string;
+  chapterTitle: string;
+  readAt: number;
+}[] {
+  const history = getHistory();
+  const comicMap = new Map<string, ReadEntry>();
+  // Get the latest entry for each comic
+  for (const h of history) {
+    const existing = comicMap.get(h.comicSlug);
+    if (!existing || h.readAt > existing.readAt) {
+      comicMap.set(h.comicSlug, h);
+    }
+  }
+  return [...comicMap.values()]
+    .sort((a, b) => b.readAt - a.readAt)
+    .slice(0, 10)
+    .map((h) => ({
+      comicSlug: h.comicSlug,
+      comicTitle: h.comicTitle,
+      comicImage: h.comicImage,
+      comicType: h.comicType,
+      chapterSlug: h.chapterSlug,
+      chapterTitle: h.chapterTitle,
+      readAt: h.readAt,
+    }));
+}
+
 function dayKey(ts: number): string {
   const d = new Date(ts);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

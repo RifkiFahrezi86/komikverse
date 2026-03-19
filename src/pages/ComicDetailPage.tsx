@@ -12,10 +12,13 @@ import {
   Search,
   ChevronRight,
   Star,
+  Play,
+  CheckCircle2,
 } from "lucide-react";
 import type { ComicDetail } from "../lib/api";
 import { getComicDetail, getProvider } from "../lib/api";
 import { addBookmark, removeBookmark, isBookmarked } from "../lib/bookmark";
+import { getLastReadForComic, getReadChapters } from "../lib/history";
 import CommentSection from "../components/CommentSection";
 import AdSlot from "../components/AdSlot";
 
@@ -38,6 +41,8 @@ export default function ComicDetailPage() {
   const [sortAsc, setSortAsc] = useState(false);
   const [chapterSearch, setChapterSearch] = useState("");
   const [showFullDesc, setShowFullDesc] = useState(false);
+  const [lastRead, setLastRead] = useState<{ chapterSlug: string; chapterTitle: string } | null>(null);
+  const [readChapterSlugs, setReadChapterSlugs] = useState<Set<string>>(new Set());
   const currentProvider = getProvider();
 
   useEffect(() => {
@@ -47,6 +52,10 @@ export default function ComicDetailPage() {
       .then((res) => {
         setComic(res.data);
         setSaved(isBookmarked(`/manga/${slug}`));
+        // Load reading history for this comic
+        const lr = getLastReadForComic(slug);
+        if (lr) setLastRead({ chapterSlug: lr.chapterSlug, chapterTitle: lr.chapterTitle });
+        setReadChapterSlugs(getReadChapters(slug));
       })
       .catch(() => setError("Gagal memuat detail komik"))
       .finally(() => setLoading(false));
@@ -218,13 +227,26 @@ export default function ComicDetailPage() {
 
             {/* Actions */}
             <div className="flex flex-wrap gap-2">
+              {lastRead && (
+                <Link
+                  to={`/baca/${lastRead.chapterSlug}`}
+                  state={readerState}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#f97316] text-white font-body font-semibold text-sm hover:bg-[#ea580c] transition-colors"
+                >
+                  <Play size={14} /> Lanjutkan
+                </Link>
+              )}
               {comic.chapters.length > 0 && (
                 <Link
                   to={`/baca/${extractChapterSlug(comic.chapters[0].href)}`}
                   state={readerState}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#f97316] text-white font-body font-semibold text-sm hover:bg-[#ea580c] transition-colors"
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg font-body font-semibold text-sm transition-colors ${
+                    lastRead
+                      ? "bg-white/[0.06] border border-white/[0.08] text-[#c0c0d0] hover:text-white hover:bg-white/[0.1]"
+                      : "bg-[#f97316] text-white hover:bg-[#ea580c]"
+                  }`}
                 >
-                  <BookOpen size={14} /> Baca Sekarang
+                  <BookOpen size={14} /> {lastRead ? "Dari Awal" : "Baca Sekarang"}
                 </Link>
               )}
               <button
@@ -298,16 +320,34 @@ export default function ComicDetailPage() {
                     {chapterSearch.trim() ? `Tidak ada chapter "${chapterSearch}"` : "Belum ada chapter tersedia"}
                   </div>
                 ) : (
-                  chapters.map((ch, i) => (
+                  chapters.map((ch, i) => {
+                    const chSlug = extractChapterSlug(ch.href);
+                    const isRead = readChapterSlugs.has(chSlug);
+                    const isLastRead = lastRead?.chapterSlug === chSlug;
+                    return (
                     <Link
                       key={ch.href + i}
-                      to={`/baca/${extractChapterSlug(ch.href)}`}
+                      to={`/baca/${chSlug}`}
                       state={readerState}
-                      className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/[0.03] transition-all group"
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/[0.03] transition-all group ${
+                        isLastRead ? "bg-[#f97316]/[0.06] border border-[#f97316]/20" : ""
+                      }`}
                     >
+                      {isRead && (
+                        <CheckCircle2 size={14} className="text-emerald-500/70 shrink-0" />
+                      )}
                       <div className="flex-grow min-w-0">
-                        <p className="text-sm font-body font-medium text-[#c0c0d0] group-hover:text-[#f97316] transition-colors truncate">
+                        <p className={`text-sm font-body font-medium transition-colors truncate ${
+                          isRead
+                            ? "text-[#5c5c6e] group-hover:text-[#f97316]"
+                            : "text-[#c0c0d0] group-hover:text-[#f97316]"
+                        }`}>
                           {ch.title.match(/^chapter/i) ? ch.title : `Chapter ${ch.title}`}
+                          {isLastRead && (
+                            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#f97316]/15 text-[#f97316]">
+                              Terakhir
+                            </span>
+                          )}
                           {ch.provider && ch.provider !== currentProvider && (
                             <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-white/[0.06] text-[#8b8ba0] border border-white/[0.06]">
                               {ch.provider === 'shinigami' ? '🔮' : ch.provider === 'komiku' ? '📚' : '⚔️'} {ch.provider}
@@ -322,7 +362,7 @@ export default function ComicDetailPage() {
                       )}
                       <ChevronRight size={14} className="text-[#3a3a4a] group-hover:text-[#f97316] shrink-0 transition-colors" />
                     </Link>
-                  ))
+                  );})
                 )}
               </div>
             </div>
