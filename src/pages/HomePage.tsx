@@ -152,7 +152,7 @@ export default function HomePage() {
   const filteredPop = filterByType(popular, popTab);
 
   return (
-    <div className="pt-16 pb-20 md:pb-12">
+    <div className="page-top pb-20 md:pb-12">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
 
         {/* Ad Slot - Home Top */}

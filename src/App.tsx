@@ -32,6 +32,7 @@ const BookmarkPage = lazyRetry(() => import("./pages/BookmarkPage"));
 const LoginPage = lazyRetry(() => import("./pages/LoginPage"));
 const RegisterPage = lazyRetry(() => import("./pages/RegisterPage"));
 const ChangePasswordPage = lazyRetry(() => import("./pages/ChangePasswordPage"));
+const ProfilePage = lazyRetry(() => import("./pages/ProfilePage"));
 const AdminLayout = lazyRetry(() => import("./layouts/AdminLayout"));
 const AdminDashboardPage = lazyRetry(() => import("./pages/admin/DashboardPage"));
 const AdminCommentsPage = lazyRetry(() => import("./pages/admin/CommentsPage"));
@@ -63,6 +64,7 @@ const router = createBrowserRouter([
       { path: "/type/:type", element: <SuspenseWrap><TypePage /></SuspenseWrap> },
       { path: "/komik/:slug", element: <SuspenseWrap><ComicDetailPage /></SuspenseWrap> },
       { path: "/bookmark", element: <SuspenseWrap><BookmarkPage /></SuspenseWrap> },
+      { path: "/profile", element: <SuspenseWrap><ProfilePage /></SuspenseWrap> },
       { path: "/login", element: <SuspenseWrap><LoginPage /></SuspenseWrap> },
       { path: "/register", element: <SuspenseWrap><RegisterPage /></SuspenseWrap> },
       { path: "/change-password", element: <ProtectedRoute><SuspenseWrap><ChangePasswordPage /></SuspenseWrap></ProtectedRoute> },

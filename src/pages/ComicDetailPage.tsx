@@ -96,8 +96,17 @@ export default function ComicDetailPage() {
     ? comic.genre.map((g) => (typeof g === "string" ? g : g.title))
     : [];
 
+  const readerState = {
+    chapters: comic.chapters,
+    comicSlug: slug,
+    comicTitle: comic.title,
+    comicImage: comic.image,
+    comicType: comic.type,
+    genres,
+  };
+
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-16 pb-20 md:pb-12">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top pb-20 md:pb-12">
       {/* Hero */}
       <div className="relative rounded-xl overflow-hidden mb-6">
         {/* Background blur */}
@@ -212,7 +221,7 @@ export default function ComicDetailPage() {
               {comic.chapters.length > 0 && (
                 <Link
                   to={`/baca/${extractChapterSlug(comic.chapters[0].href)}`}
-                  state={{ chapters: comic.chapters, comicSlug: slug }}
+                  state={readerState}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#f97316] text-white font-body font-semibold text-sm hover:bg-[#ea580c] transition-colors"
                 >
                   <BookOpen size={14} /> Baca Sekarang
@@ -293,7 +302,7 @@ export default function ComicDetailPage() {
                     <Link
                       key={ch.href + i}
                       to={`/baca/${extractChapterSlug(ch.href)}`}
-                      state={{ chapters: comic.chapters, comicSlug: slug }}
+                      state={readerState}
                       className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/[0.03] transition-all group"
                     >
                       <div className="flex-grow min-w-0">

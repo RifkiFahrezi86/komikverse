@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { Chapter, ChapterData } from "../lib/api";
 import { getChapterImages } from "../lib/api";
+import { recordRead } from "../lib/history";
 import AdSlot from "../components/AdSlot";
 
 // Preload next N images for smoother scrolling
@@ -38,6 +39,10 @@ type ViewMode = "long-strip" | "single";
 interface ReaderState {
   chapters?: Chapter[];
   comicSlug?: string;
+  comicTitle?: string;
+  comicImage?: string;
+  comicType?: string;
+  genres?: string[];
 }
 
 export default function ReaderPage() {
@@ -57,6 +62,10 @@ export default function ReaderPage() {
 
   const chapters = routerState?.chapters || [];
   const comicSlug = routerState?.comicSlug || "";
+  const comicTitle = routerState?.comicTitle || "";
+  const comicImage = routerState?.comicImage || "";
+  const comicType = routerState?.comicType;
+  const genres = routerState?.genres;
 
   const { prevChapter, nextChapter } = useMemo(() => {
     if (!slug || chapters.length === 0) return { prevChapter: null, nextChapter: null };
@@ -76,6 +85,18 @@ export default function ReaderPage() {
       .then((res) => {
         if (res.data && res.data.length > 0) {
           setChapterData(res.data[0]);
+          // Record reading history
+          if (comicSlug && comicTitle) {
+            recordRead({
+              comicSlug,
+              comicTitle,
+              comicImage,
+              comicType,
+              genres,
+              chapterSlug: slug,
+              chapterTitle: res.data[0].title || slug,
+            });
+          }
         } else {
           setError("Tidak ada gambar dalam chapter ini");
         }

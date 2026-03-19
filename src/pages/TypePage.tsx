@@ -49,7 +49,7 @@ export default function TypePage() {
   const isEmpty = !loading && popular.length === 0 && latest.length === 0 && recommended.length === 0;
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-20 pb-20 md:pb-12">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top pb-20 md:pb-12">
       {/* Type Switcher */}
       <div className="flex items-center gap-1 mb-6">
         {Object.entries(TYPE_INFO).map(([key, val]) => (
