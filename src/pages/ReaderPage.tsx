@@ -4,11 +4,14 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowUp,
+  ArrowDown,
   Loader2,
   Columns2,
   Rows3,
   SkipBack,
   SkipForward,
+  Home,
+  BookOpen,
 } from "lucide-react";
 import type { Chapter, ChapterData } from "../lib/api";
 import { getChapterImages } from "../lib/api";
@@ -155,7 +158,7 @@ export default function ReaderPage() {
 
   const goToChapter = (ch: Chapter) => {
     navigate(`/baca/${extractChapterSlug(ch.href)}`, {
-      state: { chapters, comicSlug },
+      state: { chapters, comicSlug, comicTitle, comicImage, comicType, genres },
     });
   };
 
@@ -197,12 +200,24 @@ export default function ReaderPage() {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="max-w-4xl mx-auto flex items-center justify-between px-4 py-2.5">
-          <Link
-            to={comicSlug ? `/komik/${comicSlug}` : "/"}
-            className="text-sm font-body font-medium text-[#8e8ea0] hover:text-[#f97316] flex items-center gap-1 transition-colors"
-          >
-            <ChevronLeft size={16} /> {comicSlug ? "Detail" : "Home"}
-          </Link>
+          <div className="flex items-center gap-1">
+            <Link
+              to="/"
+              className="p-1.5 rounded-lg text-[#8e8ea0] hover:text-[#f97316] hover:bg-white/[0.04] transition-colors"
+              title="Home"
+            >
+              <Home size={16} />
+            </Link>
+            {comicSlug && (
+              <Link
+                to={`/komik/${comicSlug}`}
+                className="flex items-center gap-1 text-sm font-body font-medium text-[#8e8ea0] hover:text-[#f97316] transition-colors"
+                title="Detail Komik"
+              >
+                <BookOpen size={14} /> Detail
+              </Link>
+            )}
+          </div>
 
           <h2 className="font-body text-sm font-medium text-white/85 truncate max-w-[180px] sm:max-w-md">
             {chapterData.title}
@@ -323,20 +338,32 @@ export default function ReaderPage() {
         </div>
       )}
 
-      {/* Scroll to top — show/hide with nav like prev/next */}
+      {/* Scroll buttons — show/hide with nav */}
       {viewMode === "long-strip" && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-          className={`fixed right-4 z-50 p-2.5 rounded-lg bg-[#16161f]/90 border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/30 transition-all ${
-            navVisible ? "bottom-24 opacity-100" : "bottom-4 opacity-0 pointer-events-none"
-          }`}
-          title="Scroll ke atas"
-        >
-          <ArrowUp size={18} />
-        </button>
+        <div className={`fixed right-4 z-50 flex flex-col gap-2 transition-all ${
+          navVisible ? "bottom-24 opacity-100" : "bottom-4 opacity-0 pointer-events-none"
+        }`}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className="p-2.5 rounded-lg bg-[#16161f]/90 border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/30 transition-all"
+            title="Scroll ke atas"
+          >
+            <ArrowUp size={18} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+            }}
+            className="p-2.5 rounded-lg bg-[#16161f]/90 border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/30 transition-all"
+            title="Scroll ke bawah"
+          >
+            <ArrowDown size={18} />
+          </button>
+        </div>
       )}
     </div>
   );

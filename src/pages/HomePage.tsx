@@ -172,6 +172,7 @@ export default function HomePage() {
                 <Link
                   key={item.comicSlug}
                   to={`/baca/${item.chapterSlug}`}
+                  state={{ comicSlug: item.comicSlug, comicTitle: item.comicTitle, comicImage: item.comicImage, comicType: item.comicType, chapters: [] }}
                   className="shrink-0 w-[140px] group"
                 >
                   <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2 border border-white/[0.06] bg-[#12121a]">

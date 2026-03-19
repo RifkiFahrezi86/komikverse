@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Save, Loader2, Megaphone, ToggleLeft, ToggleRight, AlertTriangle, Info } from "lucide-react";
+import { Save, Loader2, Megaphone, ToggleLeft, ToggleRight, AlertTriangle, Info, Eye, EyeOff, Layout } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9rb21pa3ZlcnNlLWFwaS1hbWJlci52ZXJjZWwuYXBwL2FwaQ==");
@@ -79,19 +79,33 @@ function getMismatchWarning(slotAdType: string, code: string): string | null {
   return `⚠️ Kode terdeteksi sebagai "${detectedLabel}" — slot ini membutuhkan "${slotAdType}". Pastikan kode yang ditempel sesuai.`;
 }
 
-const SLOT_LABELS: Record<string, { label: string; desc: string; adType: string; hint: string }> = {
-  "home-top": { label: "Home - Top", desc: "Banner di bagian atas homepage", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)" },
-  "home-mid": { label: "Home - Middle", desc: "Di antara bagian update dan populer", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)" },
-  "detail-sidebar": { label: "Detail - Sidebar", desc: "Sidebar di halaman detail komik", adType: "Banner 300×250", hint: "Gunakan kode: Banner 300×250 (atOptions iframe)" },
-  "detail-before-chapters": { label: "Detail - Before Chapters", desc: "Sebelum daftar chapter", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)" },
-  "reader-top": { label: "Reader - Top", desc: "Di atas gambar chapter", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)" },
-  "reader-bottom": { label: "Reader - Bottom", desc: "Di bawah gambar chapter", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)" },
-  "reader-between": { label: "Reader - Between Images", desc: "Disisipkan antar gambar chapter (setiap 10 gambar)", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)" },
-  "popup-global": { label: "Popup / Interstitial (Global)", desc: "Popup iklan visual. Gunakan kode Banner 728×90 atau Native Banner (BUKAN Popunder/Social Bar)", adType: "Banner / Native", hint: "Gunakan kode: Banner 728×90 atau Native Banner (yang tampil visual)" },
-  "popunder-global": { label: "Popunder (Global)", desc: "Buka tab baru saat klik pertama. Tidak menampilkan gambar.", adType: "Popunder", hint: "Gunakan kode: Popunder (script tunggal tanpa atOptions)" },
-  "socialbar-global": { label: "Social Bar (Global)", desc: "⛔ DINONAKTIFKAN — Social Bar membuat notifikasi push yang mengganggu pengunjung. Kode tetap tersimpan tapi tidak dimuat di website.", adType: "Social Bar", hint: "Social Bar dinonaktifkan dari kode frontend karena mengganggu pengunjung" },
-  "native-home": { label: "Native Banner - Home", desc: "Widget native banner di homepage", adType: "Native Banner", hint: "Gunakan kode: Native Banner (dengan container div dan data-cfasync)" },
-  "native-detail": { label: "Native Banner - Detail", desc: "Widget native banner di halaman detail komik", adType: "Native Banner", hint: "Gunakan kode: Native Banner (dengan container div dan data-cfasync)" },
+const SLOT_LABELS: Record<string, { label: string; desc: string; adType: string; hint: string; size: string; page: string }> = {
+  "home-top": { label: "Home - Top", desc: "Banner di bagian atas homepage", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)", size: "728×90", page: "Home" },
+  "home-mid": { label: "Home - Middle", desc: "Di antara bagian update dan populer", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)", size: "728×90", page: "Home" },
+  "detail-sidebar": { label: "Detail - Sidebar", desc: "Sidebar di halaman detail komik", adType: "Banner 300×250", hint: "Gunakan kode: Banner 300×250 (atOptions iframe)", size: "300×250", page: "Detail" },
+  "detail-before-chapters": { label: "Detail - Before Chapters", desc: "Sebelum daftar chapter", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)", size: "728×90", page: "Detail" },
+  "reader-top": { label: "Reader - Top", desc: "Di atas gambar chapter", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)", size: "728×90", page: "Reader" },
+  "reader-bottom": { label: "Reader - Bottom", desc: "Di bawah gambar chapter", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)", size: "728×90", page: "Reader" },
+  "reader-between": { label: "Reader - Between Images", desc: "Disisipkan antar gambar chapter (setiap 10 gambar)", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)", size: "728×90", page: "Reader" },
+  "popup-global": { label: "Popup / Interstitial (Global)", desc: "Popup iklan visual. Gunakan kode Banner 728×90 atau Native Banner (BUKAN Popunder/Social Bar)", adType: "Banner / Native", hint: "Gunakan kode: Banner 728×90 atau Native Banner (yang tampil visual)", size: "728×90", page: "Global" },
+  "popunder-global": { label: "Popunder (Global)", desc: "Buka tab baru saat klik pertama. Tidak menampilkan gambar.", adType: "Popunder", hint: "Gunakan kode: Popunder (script tunggal tanpa atOptions)", size: "Script", page: "Global" },
+  "socialbar-global": { label: "Social Bar (Global)", desc: "⛔ DINONAKTIFKAN — Social Bar membuat notifikasi push yang mengganggu pengunjung. Kode tetap tersimpan tapi tidak dimuat di website.", adType: "Social Bar", hint: "Social Bar dinonaktifkan dari kode frontend karena mengganggu pengunjung", size: "Script", page: "Global" },
+  "native-home": { label: "Native Banner - Home", desc: "Widget native banner di homepage", adType: "Native Banner", hint: "Gunakan kode: Native Banner (dengan container div dan data-cfasync)", size: "Widget", page: "Home" },
+  "native-detail": { label: "Native Banner - Detail", desc: "Widget native banner di halaman detail komik", adType: "Native Banner", hint: "Gunakan kode: Native Banner (dengan container div dan data-cfasync)", size: "Widget", page: "Detail" },
+};
+
+// Layout preview dimensions (scaled down for preview)
+const LAYOUT_PREVIEWS: Record<string, { width: string; height: string; position: string }> = {
+  "home-top": { width: "100%", height: "40px", position: "Di atas Lanjutkan Membaca" },
+  "home-mid": { width: "100%", height: "40px", position: "Antara Update & Populer" },
+  "detail-sidebar": { width: "120px", height: "100px", position: "Sidebar kanan" },
+  "detail-before-chapters": { width: "100%", height: "40px", position: "Sebelum daftar chapter" },
+  "reader-top": { width: "100%", height: "40px", position: "Di atas gambar pertama" },
+  "reader-bottom": { width: "100%", height: "40px", position: "Di bawah gambar terakhir" },
+  "reader-between": { width: "100%", height: "40px", position: "Disisipkan setiap 10 gambar" },
+  "popup-global": { width: "280px", height: "120px", position: "Popup overlay tengah layar" },
+  "native-home": { width: "100%", height: "60px", position: "Widget di homepage" },
+  "native-detail": { width: "100%", height: "60px", position: "Widget di detail page" },
 };
 
 export default function AdminAdsPage() {
@@ -100,6 +114,7 @@ export default function AdminAdsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<number | null>(null);
   const [editCode, setEditCode] = useState<Record<number, string>>({});
+  const [showPreview, setShowPreview] = useState<Record<number, boolean>>({});
 
   const loadAds = () => {
     setLoading(true);
@@ -240,7 +255,103 @@ export default function AdminAdsPage() {
                 </div>
               )}
 
-              <div className="flex justify-end mt-2">
+              {/* Layout Preview */}
+              {showPreview[ad.id] && LAYOUT_PREVIEWS[ad.slot_name] && (
+                <div className="mt-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                  <p className="text-[10px] font-body text-[#8e8ea0] mb-2 flex items-center gap-1.5">
+                    <Layout size={12} className="text-[#f97316]" />
+                    Preview Posisi — <span className="text-white/70">{LAYOUT_PREVIEWS[ad.slot_name].position}</span>
+                  </p>
+                  <div className="relative rounded-lg bg-[#0a0a0f] border border-white/[0.04] p-3 overflow-hidden" style={{ minHeight: '120px' }}>
+                    {/* Simulated page layout */}
+                    {ad.slot_name.startsWith("home") && (
+                      <div className="space-y-2">
+                        <div className="h-3 w-24 bg-white/10 rounded" />
+                        {ad.slot_name === "home-top" && (
+                          <div className="border-2 border-dashed border-[#f97316]/50 rounded-lg flex items-center justify-center bg-[#f97316]/5" style={{ height: LAYOUT_PREVIEWS[ad.slot_name].height }}>
+                            <span className="text-[9px] font-mono text-[#f97316]">AD — {meta.size}</span>
+                          </div>
+                        )}
+                        <div className="flex gap-2">{[1,2,3,4].map(i => <div key={i} className="w-12 h-16 bg-white/5 rounded flex-shrink-0" />)}</div>
+                        <div className="h-3 w-20 bg-white/10 rounded" />
+                        {ad.slot_name === "home-mid" && (
+                          <div className="border-2 border-dashed border-[#f97316]/50 rounded-lg flex items-center justify-center bg-[#f97316]/5" style={{ height: LAYOUT_PREVIEWS[ad.slot_name].height }}>
+                            <span className="text-[9px] font-mono text-[#f97316]">AD — {meta.size}</span>
+                          </div>
+                        )}
+                        <div className="grid grid-cols-3 gap-1">{[1,2,3].map(i => <div key={i} className="h-10 bg-white/5 rounded" />)}</div>
+                      </div>
+                    )}
+                    {ad.slot_name.startsWith("detail") && (
+                      <div className="flex gap-3">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex gap-2"><div className="w-16 h-20 bg-white/5 rounded" /><div className="flex-1 space-y-1"><div className="h-3 w-full bg-white/10 rounded" /><div className="h-2 w-3/4 bg-white/5 rounded" /></div></div>
+                          {ad.slot_name === "detail-before-chapters" && (
+                            <div className="border-2 border-dashed border-[#f97316]/50 rounded-lg flex items-center justify-center bg-[#f97316]/5" style={{ height: '40px' }}>
+                              <span className="text-[9px] font-mono text-[#f97316]">AD — {meta.size}</span>
+                            </div>
+                          )}
+                          <div className="space-y-1">{[1,2,3].map(i => <div key={i} className="h-4 bg-white/5 rounded" />)}</div>
+                        </div>
+                        {ad.slot_name === "detail-sidebar" && (
+                          <div className="border-2 border-dashed border-[#f97316]/50 rounded-lg flex items-center justify-center bg-[#f97316]/5 flex-shrink-0" style={{ width: '80px', height: '70px' }}>
+                            <span className="text-[8px] font-mono text-[#f97316] text-center leading-tight">{meta.size}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {ad.slot_name.startsWith("reader") && (
+                      <div className="space-y-1">
+                        <div className="h-3 w-16 bg-white/10 rounded mx-auto" />
+                        {ad.slot_name === "reader-top" && (
+                          <div className="border-2 border-dashed border-[#f97316]/50 rounded-lg flex items-center justify-center bg-[#f97316]/5" style={{ height: '35px' }}>
+                            <span className="text-[9px] font-mono text-[#f97316]">AD — {meta.size}</span>
+                          </div>
+                        )}
+                        <div className="space-y-0.5">{[1,2,3].map(i => <div key={i} className="h-12 bg-white/5 rounded" />)}</div>
+                        {ad.slot_name === "reader-between" && (
+                          <div className="border-2 border-dashed border-[#f97316]/50 rounded-lg flex items-center justify-center bg-[#f97316]/5" style={{ height: '35px' }}>
+                            <span className="text-[9px] font-mono text-[#f97316]">AD — {meta.size}</span>
+                          </div>
+                        )}
+                        <div className="space-y-0.5">{[1,2,3].map(i => <div key={i} className="h-12 bg-white/5 rounded" />)}</div>
+                        {ad.slot_name === "reader-bottom" && (
+                          <div className="border-2 border-dashed border-[#f97316]/50 rounded-lg flex items-center justify-center bg-[#f97316]/5" style={{ height: '35px' }}>
+                            <span className="text-[9px] font-mono text-[#f97316]">AD — {meta.size}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {ad.slot_name === "popup-global" && (
+                      <div className="flex items-center justify-center" style={{ minHeight: '100px' }}>
+                        <div className="border-2 border-dashed border-[#f97316]/50 rounded-lg flex items-center justify-center bg-[#f97316]/5 relative" style={{ width: '200px', height: '90px' }}>
+                          <span className="text-[9px] font-mono text-[#f97316]">POPUP AD — {meta.size}</span>
+                          <div className="absolute top-1 right-1 w-3 h-3 rounded-full bg-white/20 flex items-center justify-center"><span className="text-[6px] text-white/60">✕</span></div>
+                        </div>
+                      </div>
+                    )}
+                    {(ad.slot_name.startsWith("native")) && (
+                      <div className="space-y-2">
+                        <div className="h-3 w-20 bg-white/10 rounded" />
+                        <div className="border-2 border-dashed border-[#f97316]/50 rounded-lg flex items-center justify-center bg-[#f97316]/5" style={{ height: '50px' }}>
+                          <span className="text-[9px] font-mono text-[#f97316]">NATIVE WIDGET — {meta.size}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between mt-2">
+                {LAYOUT_PREVIEWS[ad.slot_name] ? (
+                  <button
+                    onClick={() => setShowPreview((p) => ({ ...p, [ad.id]: !p[ad.id] }))}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[10px] font-body font-medium text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/20 transition-colors"
+                  >
+                    {showPreview[ad.id] ? <EyeOff size={11} /> : <Eye size={11} />}
+                    {showPreview[ad.id] ? "Tutup Preview" : "Lihat Preview Posisi"}
+                  </button>
+                ) : <span />}
                 <button
                   onClick={() => saveAd(ad)}
                   disabled={saving === ad.id}
