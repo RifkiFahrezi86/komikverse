@@ -1,7 +1,6 @@
 import { Outlet } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import GlobalAds from "../components/GlobalAds";
 import PopupAd from "../components/PopupAd";
 
 export default function Layout() {
@@ -12,7 +11,6 @@ export default function Layout() {
         <Outlet />
       </main>
       <Footer />
-      <GlobalAds />
       <PopupAd />
     </div>
   );

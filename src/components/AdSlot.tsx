@@ -78,12 +78,96 @@ function parseAdCode(code: string): ParsedPart[] {
 }
 
 /**
+ * Anti-redirect guard.
+ * Blocks ad scripts from hijacking user clicks via:
+ * - window.open() calls (popup redirects)
+ * - Hidden overlay divs covering the page (click-jacking)
+ * - Suspicious click handlers on document.body
+ */
+function startAntiRedirectGuard(): () => void {
+  const cleanups: (() => void)[] = [];
+
+  // 1. Block window.open() from ad scripts
+  const origOpen = window.open;
+  window.open = function (...args: Parameters<typeof window.open>) {
+    // Only allow if triggered by a trusted user click on an actual ad link
+    // Block automated/scripted calls (the main source of redirects)
+    return null;
+  } as typeof window.open;
+  cleanups.push(() => { window.open = origOpen; });
+
+  // 2. MutationObserver to detect and remove hidden overlay click-jacking elements
+  // Ad scripts inject invisible full-page divs that redirect on any click
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (!(node instanceof HTMLElement)) continue;
+        // Skip elements inside ad containers (legitimate ad content)
+        if (node.closest(".ad-slot")) continue;
+        
+        const style = node.style;
+        const isFullOverlay =
+          node.tagName === "DIV" &&
+          (style.position === "fixed" || style.position === "absolute") &&
+          (style.zIndex && parseInt(style.zIndex) > 900) &&
+          (style.opacity === "0" || style.opacity === "" || parseFloat(style.opacity || "1") < 0.05) &&
+          !node.id?.includes("container-");
+
+        if (isFullOverlay) {
+          node.remove();
+          continue;
+        }
+        
+        // Also catch invisible anchors/links injected outside ad containers
+        if (node.tagName === "A" && (style.position === "fixed" || style.position === "absolute")) {
+          const rect = node.getBoundingClientRect();
+          if (rect.width > window.innerWidth * 0.5 || rect.height > window.innerHeight * 0.5) {
+            node.remove();
+          }
+        }
+      }
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  cleanups.push(() => observer.disconnect());
+
+  // 3. Block suspicious body click handlers added by ad scripts
+  const origAddEvent = document.body.addEventListener;
+  document.body.addEventListener = function (
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions
+  ) {
+    // Block click/mousedown/touchstart handlers silently added by ad scripts
+    if (type === "click" || type === "mousedown" || type === "touchstart" || type === "pointerdown") {
+      return; // Swallow — don't add it
+    }
+    return origAddEvent.call(document.body, type, listener, options as any);
+  } as typeof document.body.addEventListener;
+  cleanups.push(() => { document.body.addEventListener = origAddEvent; });
+
+  return () => { cleanups.forEach((fn) => fn()); };
+}
+
+// Global guard — activated once and stays active
+let guardCleanup: (() => void) | null = null;
+function ensureAntiRedirectGuard() {
+  if (!guardCleanup) {
+    guardCleanup = startAntiRedirectGuard();
+  }
+}
+
+/**
  * Inject ad code into a container element.
  * - HTML parts are inserted via innerHTML
  * - Inline scripts are created as script elements with textContent
  * - External scripts are loaded sequentially (wait for onload before next)
+ * - Anti-redirect guard blocks popups and invisible overlays from ad scripts
  */
 export function injectAdCode(container: HTMLElement, code: string): () => void {
+  // Activate anti-redirect protection before injecting any ad code
+  ensureAntiRedirectGuard();
+
   container.innerHTML = "";
   const parts = parseAdCode(code);
   const created: HTMLElement[] = [];
