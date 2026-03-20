@@ -97,7 +97,16 @@ export default function RankingPage() {
     });
   }, []);
 
-  const filtered = comicTab === "all" ? allComics : allComics.filter(c => c.type?.toLowerCase() === comicTab);
+  const filtered = (comicTab === "all" ? allComics : allComics.filter(c => c.type?.toLowerCase() === comicTab))
+    .slice()
+    .sort((a, b) => {
+      const ra = parseFloat(String(a.rating || "0")) || 0;
+      const rb = parseFloat(String(b.rating || "0")) || 0;
+      // Comics with no/zero rating go to the bottom
+      if (ra > 0 && rb <= 0) return -1;
+      if (rb > 0 && ra <= 0) return 1;
+      return rb - ra;
+    });
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top pb-20 md:pb-12">
