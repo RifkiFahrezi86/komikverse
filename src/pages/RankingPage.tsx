@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Trophy, Eye, Flame, Crown, Star, Gift, ImageOff, BarChart3 } from "lucide-react";
 import type { Comic } from "../lib/api";
-import { getAllPopular, getStreakLeaderboard, batchGetViews, formatViews } from "../lib/api";
+import { getAllPopular, getStreakLeaderboard, formatViews } from "../lib/api";
 
 const TYPE_TABS = [
   { key: "all", label: "Semua" },
@@ -23,7 +23,7 @@ function extractSlug(href: string): string {
   return href?.split("/").filter(Boolean).pop() || "";
 }
 
-function PodiumCard({ comic, position, views }: { comic: Comic; position: 1 | 2 | 3; views?: { view_count: number } }) {
+function PodiumCard({ comic, position }: { comic: Comic; position: 1 | 2 | 3 }) {
   const config = {
     1: { img: "w-28 h-28 sm:w-32 sm:h-32", ring: "ring-[#f97316]", badge: "bg-[#f97316]", badgeSize: "w-7 h-7 text-xs", barH: "h-28 sm:h-32", barBg: "bg-gradient-to-t from-[#8B6914] to-[#C9A227]", mt: "", width: "w-[130px] sm:w-[150px]" },
     2: { img: "w-20 h-20 sm:w-24 sm:h-24", ring: "ring-[#94a3b8]", badge: "bg-[#94a3b8]", badgeSize: "w-6 h-6 text-[10px]", barH: "h-20 sm:h-24", barBg: "bg-gradient-to-t from-[#4a4a3a] to-[#7a7a5a]", mt: "mt-8", width: "w-[110px] sm:w-[130px]" },
@@ -62,10 +62,10 @@ function PodiumCard({ comic, position, views }: { comic: Comic; position: 1 | 2 
       )}
       {/* Podium Bar */}
       <div className={`w-full ${s.barH} ${s.barBg} rounded-t-xl mt-1 flex flex-col items-center justify-end pb-2 opacity-80`}>
-        {views && views.view_count > 0 && (
+        {comic.view_count && comic.view_count > 0 && (
           <div className="flex items-center gap-0.5 text-white/70">
             <Eye size={9} />
-            <span className="text-[9px] font-body font-medium">{formatViews(views.view_count)}</span>
+            <span className="text-[9px] font-body font-medium">{formatViews(comic.view_count)}</span>
           </div>
         )}
       </div>
@@ -76,7 +76,6 @@ function PodiumCard({ comic, position, views }: { comic: Comic; position: 1 | 2 
 export default function RankingPage() {
   const [comicTab, setComicTab] = useState("all");
   const [allComics, setAllComics] = useState<Comic[]>([]);
-  const [viewCounts, setViewCounts] = useState<Record<string, { view_count: number; weekly_views: number }>>({});
   const [streakUsers, setStreakUsers] = useState<StreakUser[]>([]);
   const [loadingComics, setLoadingComics] = useState(true);
   const [loadingStreaks, setLoadingStreaks] = useState(true);
@@ -85,11 +84,6 @@ export default function RankingPage() {
     getAllPopular().then((comics) => {
       setAllComics(comics);
       setLoadingComics(false);
-      // Fetch view counts for all comics
-      const slugs = comics.map(c => extractSlug(c.href)).filter(Boolean);
-      if (slugs.length > 0) {
-        batchGetViews(slugs).then(setViewCounts);
-      }
     });
     getStreakLeaderboard(20).then((data) => {
       setStreakUsers(data);
@@ -139,9 +133,9 @@ export default function RankingPage() {
       {/* Podium Top 3 with Bar Chart */}
       {!loadingComics && filtered.length >= 3 && (
         <div className="flex justify-center items-end gap-2 sm:gap-4 mb-8">
-          <PodiumCard comic={filtered[1]} position={2} views={viewCounts[extractSlug(filtered[1].href)]} />
-          <PodiumCard comic={filtered[0]} position={1} views={viewCounts[extractSlug(filtered[0].href)]} />
-          <PodiumCard comic={filtered[2]} position={3} views={viewCounts[extractSlug(filtered[2].href)]} />
+          <PodiumCard comic={filtered[1]} position={2} />
+          <PodiumCard comic={filtered[0]} position={1} />
+          <PodiumCard comic={filtered[2]} position={3} />
         </div>
       )}
 
@@ -162,7 +156,6 @@ export default function RankingPage() {
             {filtered.map((comic, idx) => {
               const rank = idx + 1;
               const slug = extractSlug(comic.href);
-              const views = viewCounts[slug];
               return (
                 <Link
                   key={slug}
@@ -220,10 +213,10 @@ export default function RankingPage() {
                         <span className="text-xs font-body font-semibold text-amber-400">{comic.rating}</span>
                       </div>
                     )}
-                    {views && views.view_count > 0 && (
+                    {comic.view_count && comic.view_count > 0 && (
                       <div className="flex items-center gap-1 text-[#8e8ea0]">
                         <Eye size={10} />
-                        <span className="text-[10px] font-body font-medium">{formatViews(views.view_count)}</span>
+                        <span className="text-[10px] font-body font-medium">{formatViews(comic.view_count)}</span>
                       </div>
                     )}
                   </div>

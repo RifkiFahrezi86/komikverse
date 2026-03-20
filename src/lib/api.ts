@@ -74,6 +74,7 @@ export interface Comic {
   genre?: string;
   status?: string;
   author?: string;
+  view_count?: number;
   _provider?: string;
 }
 
@@ -132,6 +133,7 @@ function normalizeComic(raw: any): Comic {
     genre: raw.genre,
     status: raw.status,
     author: raw.author,
+    view_count: raw.view_count || undefined,
   };
 }
 
