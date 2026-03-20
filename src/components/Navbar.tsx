@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, X, Compass, Library, BookOpen, Home, Bookmark, LogIn, LogOut, Shield, User as UserIcon, KeyRound } from "lucide-react";
+import { Search, X, Compass, Library, BookOpen, Home, Bookmark, LogIn, LogOut, Shield, User as UserIcon, KeyRound, Trophy } from "lucide-react";
 import { useAuth } from "../lib/auth";
 
 export default function Navbar() {
@@ -88,6 +88,7 @@ export default function Navbar() {
               <NavLink to="/terbaru" active={isActive("/terbaru")} label="Terbaru" />
               <NavLink to="/genre" active={isActive("/genre")} label="Genre" />
               <NavLink to="/bookmark" active={isActive("/bookmark")} label="Bookmark" />
+              <NavLink to="/ranking" active={isActive("/ranking")} label="Ranking" />
               <div className="relative group">
                 <button className="px-3 py-1.5 text-sm font-body font-medium text-[#8e8ea0] hover:text-white transition-colors rounded-lg hover:bg-white/[0.04]">
                   Type
@@ -173,7 +174,7 @@ export default function Navbar() {
           <MobileNavItem to="/" icon={<Home size={20} />} label="Home" active={isActive("/")} />
           <MobileNavItem to="/terbaru" icon={<Compass size={20} />} label="Explore" active={isActive("/terbaru")} />
           <MobileNavItem to="/bookmark" icon={<Bookmark size={20} />} label="Library" active={isActive("/bookmark")} />
-          <MobileNavItem to="/genre" icon={<Library size={20} />} label="Genre" active={isActive("/genre")} />
+          <MobileNavItem to="/ranking" icon={<Trophy size={20} />} label="Ranking" active={isActive("/ranking")} />
           <MobileNavItem
             to={user ? "/profile" : "/login"}
             icon={<UserIcon size={20} />}

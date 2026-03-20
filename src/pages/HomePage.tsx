@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, ChevronLeft, TrendingUp, Sparkles, Clock, Play } from "lucide-react";
+import { ChevronRight, ChevronLeft, TrendingUp, Sparkles, Clock, Play, X, Heart } from "lucide-react";
 import type { Comic } from "../lib/api";
-import { getPopular, getLatest, getRecommended, getPopularMore, getLatestMore, getRecommendedMore } from "../lib/api";
-import { getContinueReading } from "../lib/history";
+import { getPopular, getLatest, getRecommended, getPopularMore, getLatestMore, getRecommendedMore, getComicsByGenre } from "../lib/api";
+import { getContinueReading, deleteComicFromHistory, getReadingStats } from "../lib/history";
 import ComicCard, { UpdateCard, RecommendCard } from "../components/ComicCard";
 import ComicCardSkeleton, { UpdateCardSkeleton, RecommendCardSkeleton } from "../components/ComicCardSkeleton";
 import AdSlot from "../components/AdSlot";
@@ -103,9 +103,34 @@ export default function HomePage() {
   const [latest, setLatest] = useState<Comic[]>([]);
   const [recommended, setRecommended] = useState<Comic[]>([]);
   const [loading, setLoading] = useState(true);
+  const [enrichFailed, setEnrichFailed] = useState(false);
   const [recTab, setRecTab] = useState("all");
   const [popTab, setPopTab] = useState("all");
-  const [continueList] = useState(() => getContinueReading());
+  const [continueList, setContinueList] = useState(() => getContinueReading());
+  const [genreRecs, setGenreRecs] = useState<{ genre: string; comics: Comic[] }[]>([]);
+
+  // Fetch genre-based recommendations from user's reading history
+  useEffect(() => {
+    const stats = getReadingStats();
+    const topGenres = stats.topGenres.slice(0, 3);
+    if (topGenres.length === 0) return;
+    const readSlugs = new Set(stats.recentComics.map(c => c.slug));
+    Promise.all(
+      topGenres.map(async (g) => {
+        try {
+          const slug = g.genre.toLowerCase().replace(/\s+/g, "-");
+          const res = await getComicsByGenre(slug);
+          const comics = (res.data || []).filter(c => {
+            const s = c.href?.split("/").filter(Boolean).pop() || "";
+            return !readSlugs.has(s);
+          }).slice(0, 10);
+          return { genre: g.genre, comics };
+        } catch {
+          return { genre: g.genre, comics: [] };
+        }
+      })
+    ).then(results => setGenreRecs(results.filter(r => r.comics.length > 0)));
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -144,7 +169,8 @@ export default function HomePage() {
         if (moreLat.length > 0) setLatest(prev => mergeUnique(prev, moreLat));
         if (moreRec.length > 0) setRecommended(prev => mergeUnique(prev, moreRec));
       } catch {
-        // Background enrichment failed — homepage still works with primary data
+        // Background enrichment failed — show subtle indicator
+        setEnrichFailed(true);
       }
     }
     load();
@@ -160,6 +186,12 @@ export default function HomePage() {
         {/* Ad Slot - Home Top */}
         <AdSlot name="home-top" className="mb-6 rounded-xl overflow-hidden" />
 
+        {enrichFailed && (
+          <div className="mb-4 px-3 py-2 rounded-lg bg-yellow-500/5 border border-yellow-500/10 text-[11px] font-body text-yellow-400/80 text-center">
+            Sebagian data dari provider lain gagal dimuat. Menampilkan data utama saja.
+          </div>
+        )}
+
         {/* ─── Lanjutkan Membaca Section ─── */}
         {continueList.length > 0 && (
           <section className="mb-10">
@@ -169,45 +201,51 @@ export default function HomePage() {
             />
             <HorizontalScroller>
               {continueList.map((item) => (
-                <Link
-                  key={item.comicSlug}
-                  to={`/baca/${item.chapterSlug}`}
-                  state={{ comicSlug: item.comicSlug, comicTitle: item.comicTitle, comicImage: item.comicImage, comicType: item.comicType, chapters: [] }}
-                  className="shrink-0 w-[140px] group"
-                >
-                  <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2 border border-white/[0.06] bg-[#12121a]">
-                    {item.comicImage ? (
-                      <img
-                        src={item.comicImage}
-                        alt={item.comicTitle}
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                      />
-                    ) : null}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 p-2">
-                      <p className="text-[10px] font-body font-medium text-white/90 truncate">
-                        {item.chapterTitle}
-                      </p>
-                    </div>
-                    <div className="absolute top-2 left-2">
-                      <div className="w-6 h-6 rounded-full bg-[#f97316] flex items-center justify-center shadow-lg">
-                        <Play size={10} className="text-white ml-0.5" />
+                <div key={item.comicSlug} className="shrink-0 w-[140px] relative group">
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteComicFromHistory(item.comicSlug); setContinueList(prev => prev.filter(c => c.comicSlug !== item.comicSlug)); }}
+                    className="absolute top-1 right-1 z-10 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center text-white/60 hover:text-white hover:bg-red-500/80 transition-all opacity-0 group-hover:opacity-100"
+                  >
+                    <X size={10} />
+                  </button>
+                  <Link
+                    to={`/baca/${item.chapterSlug}`}
+                    state={{ comicSlug: item.comicSlug, comicTitle: item.comicTitle, comicImage: item.comicImage, comicType: item.comicType, chapters: [] }}
+                  >
+                    <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2 border border-white/[0.06] bg-[#12121a]">
+                      {item.comicImage ? (
+                        <img
+                          src={item.comicImage}
+                          alt={item.comicTitle}
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                        />
+                      ) : null}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-2">
+                        <p className="text-[10px] font-body font-medium text-white/90 truncate">
+                          {item.chapterTitle}
+                        </p>
                       </div>
-                    </div>
-                    {item.comicType && (
-                      <div className="absolute top-2 right-2">
-                        <span className="px-1.5 py-0.5 rounded text-[8px] font-body font-bold uppercase bg-black/60 text-white/80 backdrop-blur-sm">
-                          {item.comicType}
-                        </span>
+                      <div className="absolute top-2 left-2">
+                        <div className="w-6 h-6 rounded-full bg-[#f97316] flex items-center justify-center shadow-lg">
+                          <Play size={10} className="text-white ml-0.5" />
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  <p className="text-xs font-body font-medium text-[#c0c0d0] group-hover:text-[#f97316] transition-colors truncate">
-                    {item.comicTitle}
-                  </p>
-                </Link>
+                      {item.comicType && (
+                        <div className="absolute top-2 right-2">
+                          <span className="px-1.5 py-0.5 rounded text-[8px] font-body font-bold uppercase bg-black/60 text-white/80 backdrop-blur-sm">
+                            {item.comicType}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs font-body font-medium text-[#c0c0d0] group-hover:text-[#f97316] transition-colors truncate">
+                      {item.comicTitle}
+                    </p>
+                  </Link>
+                </div>
               ))}
             </HorizontalScroller>
           </section>
@@ -248,6 +286,31 @@ export default function HomePage() {
             )}
           </HorizontalScroller>
         </section>
+
+        {/* ─── Genre Recommendations (from reading history) ─── */}
+        {genreRecs.length > 0 && (
+          <section className="mb-10">
+            <SectionHeader
+              title="Untukmu"
+              icon={<Heart size={20} className="text-[#f97316]" />}
+            />
+            {genreRecs.map((gr) => (
+              <div key={gr.genre} className="mb-5">
+                <Link
+                  to={`/genre/${gr.genre.toLowerCase().replace(/\s+/g, "-")}`}
+                  className="inline-flex items-center gap-1.5 text-sm font-body font-semibold text-[#c0c0d0] hover:text-[#f97316] transition-colors mb-3"
+                >
+                  {gr.genre} <ChevronRight size={14} />
+                </Link>
+                <HorizontalScroller>
+                  {gr.comics.map((comic, i) => (
+                    <RecommendCard key={`${comic.href}-${i}`} comic={comic} />
+                  ))}
+                </HorizontalScroller>
+              </div>
+            ))}
+          </section>
+        )}
 
         {/* ─── Update Terbaru Section ─── */}
         <section className="mb-10">

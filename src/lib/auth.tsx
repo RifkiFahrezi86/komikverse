@@ -12,6 +12,9 @@ export interface User {
   role: "user" | "admin" | "owner";
   avatar_url?: string;
   ad_free?: boolean;
+  ad_free_until?: string;
+  current_streak?: number;
+  longest_streak?: number;
   created_at: string;
 }
 
@@ -103,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, isAdmin: user?.role === "admin" || user?.role === "owner", isOwner: user?.role === "owner", isAdFree: user?.role === "admin" || user?.role === "owner" || user?.ad_free === true }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, isAdmin: user?.role === "admin" || user?.role === "owner", isOwner: user?.role === "owner", isAdFree: user?.role === "admin" || user?.role === "owner" || user?.ad_free === true || (!!user?.ad_free_until && new Date(user.ad_free_until) > new Date()) }}>
       {children}
     </AuthContext.Provider>
   );

@@ -24,12 +24,13 @@ function useImagePreloader(panels: string[], currentIndex: number, ahead = 5) {
     if (panels.length === 0) return;
     const start = Math.max(0, currentIndex);
     const end = Math.min(panels.length, start + ahead);
-    const added: HTMLLinkElement[] = [];
+    const imgs: HTMLImageElement[] = [];
     for (let i = start; i < end; i++) {
       const img = new Image();
       img.src = panels[i];
+      imgs.push(img);
     }
-    return () => { added.forEach(l => l.remove()); };
+    return () => { imgs.forEach(img => { img.src = ""; }); };
   }, [panels, currentIndex, ahead]);
 }
 
@@ -200,36 +201,36 @@ export default function ReaderPage() {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="max-w-4xl mx-auto flex items-center justify-between px-4 py-2.5">
-          <div className="flex items-center gap-1">
-            <Link
-              to="/"
-              className="p-1.5 rounded-lg text-[#8e8ea0] hover:text-[#f97316] hover:bg-white/[0.04] transition-colors"
-              title="Home"
-            >
-              <Home size={16} />
-            </Link>
-            {comicSlug && (
-              <Link
-                to={`/komik/${comicSlug}`}
-                className="flex items-center gap-1 text-sm font-body font-medium text-[#8e8ea0] hover:text-[#f97316] transition-colors"
-                title="Detail Komik"
-              >
-                <BookOpen size={14} /> Detail
-              </Link>
-            )}
-          </div>
+          <Link
+            to="/"
+            className="p-2 rounded-lg text-[#8e8ea0] hover:text-[#f97316] hover:bg-white/[0.04] transition-colors flex-shrink-0"
+            title="Home"
+          >
+            <Home size={18} />
+          </Link>
 
-          <h2 className="font-body text-sm font-medium text-white/85 truncate max-w-[180px] sm:max-w-md">
+          <h2 className="font-body text-sm font-medium text-white/85 truncate max-w-[180px] sm:max-w-md mx-2">
             {chapterData.title}
           </h2>
 
-          <button
-            onClick={() => setViewMode(viewMode === "long-strip" ? "single" : "long-strip")}
-            className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] transition-colors"
-            title={viewMode === "long-strip" ? "Mode Satu Halaman" : "Mode Long Strip"}
-          >
-            {viewMode === "long-strip" ? <Columns2 size={14} /> : <Rows3 size={14} />}
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {comicSlug && (
+              <Link
+                to={`/komik/${comicSlug}`}
+                className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] transition-colors"
+                title="Detail Komik"
+              >
+                <BookOpen size={16} />
+              </Link>
+            )}
+            <button
+              onClick={() => setViewMode(viewMode === "long-strip" ? "single" : "long-strip")}
+              className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] transition-colors"
+              title={viewMode === "long-strip" ? "Mode Satu Halaman" : "Mode Long Strip"}
+            >
+              {viewMode === "long-strip" ? <Columns2 size={14} /> : <Rows3 size={14} />}
+            </button>
+          </div>
         </div>
 
         {viewMode === "single" && (

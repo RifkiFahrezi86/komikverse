@@ -398,3 +398,69 @@ export async function getComicsByGenre(slug: string, page = 1): Promise<ApiRespo
   const data = await fetchAllProviders(`/genre/${slug}?page=${page}`);
   return { status: "Ok", data };
 }
+
+// ─── View Tracking ───
+
+const VIEWS_BASE = API_BASE.replace(/\/api\/?$/, "/api/views");
+
+export async function trackView(comic_slug: string, comic_title: string, comic_image: string, comic_type?: string): Promise<void> {
+  try {
+    await fetch(`${VIEWS_BASE}/track`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comic_slug, comic_title, comic_image, comic_type }),
+    });
+  } catch { /* fire-and-forget */ }
+}
+
+export async function getViewCount(slug: string): Promise<{ view_count: number; weekly_views: number }> {
+  try {
+    const res = await fetch(`${VIEWS_BASE}/${slug}`);
+    const data = await res.json();
+    return data.data || { view_count: 0, weekly_views: 0 };
+  } catch {
+    return { view_count: 0, weekly_views: 0 };
+  }
+}
+
+export async function getViewLeaderboard(type = "all", limit = 20): Promise<any[]> {
+  try {
+    const res = await fetch(`${VIEWS_BASE}/leaderboard?type=${type}&limit=${limit}`);
+    const data = await res.json();
+    return data.data || [];
+  } catch {
+    return [];
+  }
+}
+
+export function formatViews(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+  return String(n);
+}
+
+// ─── Streak Sync ───
+
+const AUTH_BASE = API_BASE.replace(/\/api\/?$/, "/api");
+
+export async function syncStreak(current_streak: number, longest_streak: number, last_read_date: string): Promise<void> {
+  const token = localStorage.getItem("kv_token");
+  if (!token) return;
+  try {
+    await fetch(`${AUTH_BASE}/auth/sync-streak`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ current_streak, longest_streak, last_read_date }),
+    });
+  } catch { /* fire-and-forget */ }
+}
+
+export async function getStreakLeaderboard(limit = 20): Promise<any[]> {
+  try {
+    const res = await fetch(`${AUTH_BASE}/auth/streak-leaderboard?limit=${limit}`);
+    const data = await res.json();
+    return data.data || [];
+  } catch {
+    return [];
+  }
+}

@@ -3,6 +3,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import Layout from "./layouts/Layout";
 import ReaderLayout from "./layouts/ReaderLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 // Auto-retry dynamic import — reload page if chunk is missing (new deploy)
 function lazyRetry(importFn: () => Promise<any>) {
@@ -33,6 +34,7 @@ const LoginPage = lazyRetry(() => import("./pages/LoginPage"));
 const RegisterPage = lazyRetry(() => import("./pages/RegisterPage"));
 const ChangePasswordPage = lazyRetry(() => import("./pages/ChangePasswordPage"));
 const ProfilePage = lazyRetry(() => import("./pages/ProfilePage"));
+const RankingPage = lazyRetry(() => import("./pages/RankingPage"));
 const AdminLayout = lazyRetry(() => import("./layouts/AdminLayout"));
 const AdminDashboardPage = lazyRetry(() => import("./pages/admin/DashboardPage"));
 const AdminCommentsPage = lazyRetry(() => import("./pages/admin/CommentsPage"));
@@ -49,7 +51,7 @@ function PageLoader() {
 }
 
 function SuspenseWrap({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
+  return <ErrorBoundary><Suspense fallback={<PageLoader />}>{children}</Suspense></ErrorBoundary>;
 }
 
 const router = createBrowserRouter([
@@ -64,6 +66,7 @@ const router = createBrowserRouter([
       { path: "/type/:type", element: <SuspenseWrap><TypePage /></SuspenseWrap> },
       { path: "/komik/:slug", element: <SuspenseWrap><ComicDetailPage /></SuspenseWrap> },
       { path: "/bookmark", element: <SuspenseWrap><BookmarkPage /></SuspenseWrap> },
+      { path: "/ranking", element: <SuspenseWrap><RankingPage /></SuspenseWrap> },
       { path: "/profile", element: <SuspenseWrap><ProfilePage /></SuspenseWrap> },
       { path: "/login", element: <SuspenseWrap><LoginPage /></SuspenseWrap> },
       { path: "/register", element: <SuspenseWrap><RegisterPage /></SuspenseWrap> },

@@ -44,6 +44,16 @@ export function recordRead(entry: Omit<ReadEntry, "readAt">) {
   if (recent) return;
   history.push({ ...entry, readAt: Date.now() });
   saveHistory(history);
+
+  // Sync streak to server in background
+  try {
+    const stats = getReadingStats();
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    import("./api").then(({ syncStreak }) => {
+      syncStreak(stats.currentStreak, stats.longestStreak, dateStr);
+    });
+  } catch { /* ignore */ }
 }
 
 /** Get the last chapter read for a specific comic */
@@ -94,7 +104,9 @@ export function getContinueReading(): {
 }
 
 function dayKey(ts: number): string {
+  // Use local midnight-normalized date to avoid timezone-related streak breaks
   const d = new Date(ts);
+  d.setHours(0, 0, 0, 0);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
@@ -166,7 +178,10 @@ export function getReadingStats(): ReadingStats {
   for (let i = 1; i < sortedDays.length; i++) {
     const prev = new Date(sortedDays[i - 1]);
     const curr = new Date(sortedDays[i]);
-    const diffDays = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
+    // Normalize to midnight to avoid DST/timezone drift
+    prev.setHours(0, 0, 0, 0);
+    curr.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays === 1) {
       streak++;
     } else {
@@ -199,4 +214,16 @@ export function getReadingStats(): ReadingStats {
     recentComics,
     readsByDay,
   };
+}
+
+/** Delete all entries for a specific comic from history */
+export function deleteComicFromHistory(comicSlug: string): void {
+  const entries = getHistory();
+  const filtered = entries.filter(e => e.comicSlug !== comicSlug);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+}
+
+/** Clear all reading history */
+export function clearAllHistory(): void {
+  localStorage.removeItem(STORAGE_KEY);
 }

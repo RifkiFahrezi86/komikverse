@@ -11,9 +11,10 @@ import {
   Shield,
   ChevronRight,
   ImageOff,
+  Trash2,
 } from "lucide-react";
 import { useAuth } from "../lib/auth";
-import { getReadingStats, type ReadingStats } from "../lib/history";
+import { getReadingStats, deleteComicFromHistory, clearAllHistory, type ReadingStats } from "../lib/history";
 
 function StatCard({ icon, value, label, color }: { icon: React.ReactNode; value: string | number; label: string; color: string }) {
   return (
@@ -133,9 +134,11 @@ export default function ProfilePage() {
             </p>
             <div className="flex flex-wrap gap-2">
               {stats.topGenres.map((g, i) => (
-                <div
+                <Link
                   key={g.genre}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+                  to={`/genre/${encodeURIComponent(g.genre.toLowerCase())}`}
+                  state={{ name: g.genre }}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all hover:scale-105 ${
                     i === 0
                       ? "bg-[#f97316]/10 border-[#f97316]/30 text-[#f97316]"
                       : "bg-white/[0.03] border-white/[0.06] text-[#c0c0d0]"
@@ -147,7 +150,7 @@ export default function ProfilePage() {
                   }`}>
                     {g.count}x
                   </span>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -157,18 +160,25 @@ export default function ProfilePage() {
       {/* Terakhir Dibaca */}
       {stats && stats.recentComics.length > 0 && (
         <section className="mb-6">
-          <h2 className="flex items-center gap-2 font-display text-base text-white/85 font-bold mb-3">
-            <BookOpen size={16} className="text-[#f97316]" />
-            Terakhir Dibaca
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="flex items-center gap-2 font-display text-base text-white/85 font-bold">
+              <BookOpen size={16} className="text-[#f97316]" />
+              Terakhir Dibaca
+            </h2>
+            <button
+              onClick={() => { if (confirm("Yakin ingin menghapus semua riwayat baca?")) { clearAllHistory(); setStats(getReadingStats()); } }}
+              className="text-[10px] font-body font-medium text-red-400/70 hover:text-red-400 transition-colors px-2 py-1 rounded-lg hover:bg-red-500/10"
+            >
+              Hapus Semua
+            </button>
+          </div>
           <div className="space-y-2">
             {stats.recentComics.map((comic) => (
-              <Link
+              <div
                 key={comic.slug}
-                to={`/komik/${comic.slug}`}
                 className="flex items-center gap-3 p-3 rounded-xl bg-[#12121a] border border-white/[0.04] hover:border-[#f97316]/20 transition-all group"
               >
-                <div className="w-12 h-16 rounded-lg overflow-hidden shrink-0 bg-[#1a1a24]">
+                <Link to={`/komik/${comic.slug}`} className="w-12 h-16 rounded-lg overflow-hidden shrink-0 bg-[#1a1a24]">
                   {comic.image ? (
                     <img
                       src={comic.image}
@@ -182,8 +192,8 @@ export default function ProfilePage() {
                       <ImageOff size={16} />
                     </div>
                   )}
-                </div>
-                <div className="flex-grow min-w-0">
+                </Link>
+                <Link to={`/komik/${comic.slug}`} className="flex-grow min-w-0">
                   <p className="text-sm font-body font-medium text-[#c0c0d0] group-hover:text-[#f97316] transition-colors truncate">
                     {comic.title}
                   </p>
@@ -197,9 +207,17 @@ export default function ProfilePage() {
                       {comic.chaptersRead} chapter · {formatDate(comic.lastRead)}
                     </span>
                   </div>
-                </div>
-                <ChevronRight size={16} className="text-[#3a3a4a] group-hover:text-[#f97316] transition-colors shrink-0" />
-              </Link>
+                </Link>
+                <button
+                  onClick={(e) => { e.stopPropagation(); deleteComicFromHistory(comic.slug); setStats(getReadingStats()); }}
+                  className="p-1.5 rounded-lg text-[#5c5c6e] hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0"
+                >
+                  <Trash2 size={14} />
+                </button>
+                <Link to={`/komik/${comic.slug}`}>
+                  <ChevronRight size={16} className="text-[#3a3a4a] group-hover:text-[#f97316] transition-colors shrink-0" />
+                </Link>
+              </div>
             ))}
           </div>
         </section>

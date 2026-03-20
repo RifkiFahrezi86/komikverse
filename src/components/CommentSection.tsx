@@ -26,6 +26,8 @@ export default function CommentSection({ comicSlug }: { comicSlug: string }) {
   const [replyText, setReplyText] = useState("");
   const [posting, setPosting] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const COMMENTS_PER_PAGE = 10;
+  const [visibleCount, setVisibleCount] = useState(COMMENTS_PER_PAGE);
 
   const loadComments = () => {
     fetch(`${COMMENT_BASE}/comments?comic_slug=${encodeURIComponent(comicSlug)}`)
@@ -126,7 +128,7 @@ export default function CommentSection({ comicSlug }: { comicSlug: string }) {
         <p className="text-sm text-[#5c5c6e] font-body text-center py-6">Belum ada komentar. Jadilah yang pertama!</p>
       ) : (
         <div className="space-y-3">
-          {comments.map((c) => (
+          {comments.slice(0, visibleCount).map((c) => (
             <CommentBubble
               key={c.id}
               comment={c}
@@ -141,6 +143,14 @@ export default function CommentSection({ comicSlug }: { comicSlug: string }) {
               onCancelReply={() => setReplyTo(null)}
             />
           ))}
+          {visibleCount < comments.length && (
+            <button
+              onClick={() => setVisibleCount((v) => v + COMMENTS_PER_PAGE)}
+              className="w-full py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-xs font-body font-medium text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/20 transition-colors"
+            >
+              Tampilkan lebih banyak ({comments.length - visibleCount} tersisa)
+            </button>
+          )}
         </div>
       )}
     </section>
@@ -170,7 +180,7 @@ function CommentBubble({
   onPostReply: (content: string, parentId: number) => void;
   onCancelReply: () => void;
 }) {
-  const canDelete = currentUser && (currentUser.id === comment.user.id || currentUser.role === "admin");
+  const canDelete = currentUser && (currentUser.id === comment.user.id || currentUser.role === "admin" || currentUser.role === "owner");
   const isReplying = replyTo?.id === comment.id;
 
   return (
@@ -185,6 +195,11 @@ function CommentBubble({
             {comment.user.role === "admin" && (
               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-body font-bold bg-[#f97316]/15 text-[#f97316]">
                 <ShieldCheck size={10} /> Admin
+              </span>
+            )}
+            {comment.user.role === "owner" && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-body font-bold bg-purple-500/15 text-purple-400">
+                <ShieldCheck size={10} /> Owner
               </span>
             )}
             <span className="text-[10px] text-[#5c5c6e] font-body">

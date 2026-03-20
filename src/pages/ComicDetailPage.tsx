@@ -14,9 +14,10 @@ import {
   Star,
   Play,
   CheckCircle2,
+  Eye,
 } from "lucide-react";
 import type { ComicDetail } from "../lib/api";
-import { getComicDetail, getProvider } from "../lib/api";
+import { getComicDetail, getProvider, trackView, getViewCount, formatViews } from "../lib/api";
 import { addBookmark, removeBookmark, isBookmarked } from "../lib/bookmark";
 import { getLastReadForComic, getReadChapters } from "../lib/history";
 import CommentSection from "../components/CommentSection";
@@ -43,6 +44,7 @@ export default function ComicDetailPage() {
   const [showFullDesc, setShowFullDesc] = useState(false);
   const [lastRead, setLastRead] = useState<{ chapterSlug: string; chapterTitle: string } | null>(null);
   const [readChapterSlugs, setReadChapterSlugs] = useState<Set<string>>(new Set());
+  const [viewCount, setViewCount] = useState(0);
   const currentProvider = getProvider();
 
   useEffect(() => {
@@ -56,6 +58,9 @@ export default function ComicDetailPage() {
         const lr = getLastReadForComic(slug);
         if (lr) setLastRead({ chapterSlug: lr.chapterSlug, chapterTitle: lr.chapterTitle });
         setReadChapterSlugs(getReadChapters(slug));
+        // Track view & fetch count (fire-and-forget)
+        trackView(slug, res.data.title, res.data.image, res.data.type);
+        getViewCount(slug).then(v => setViewCount(v.view_count));
       })
       .catch(() => setError("Gagal memuat detail komik"))
       .finally(() => setLoading(false));
@@ -179,6 +184,11 @@ export default function ComicDetailPage() {
               {comic.rating && (
                 <span className="px-2 py-0.5 rounded text-[10px] font-body font-bold bg-amber-500/15 text-amber-400 flex items-center gap-0.5">
                   <Star size={9} /> {comic.rating}
+                </span>
+              )}
+              {viewCount > 0 && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-body font-bold bg-blue-500/15 text-blue-400 flex items-center gap-0.5">
+                  <Eye size={9} /> {formatViews(viewCount)}
                 </span>
               )}
             </div>
