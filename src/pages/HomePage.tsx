@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, ChevronLeft, TrendingUp, Sparkles, Clock, Play, X, Heart } from "lucide-react";
+import { ChevronRight, ChevronLeft, TrendingUp, Sparkles, Clock, Play, Trash2, Heart } from "lucide-react";
 import type { Comic } from "../lib/api";
 import { getPopular, getLatest, getRecommended, getPopularMore, getLatestMore, getRecommendedMore, getComicsByGenre } from "../lib/api";
 import { getContinueReading, deleteComicFromHistory, getReadingStats } from "../lib/history";
@@ -204,9 +204,9 @@ export default function HomePage() {
                 <div key={item.comicSlug} className="shrink-0 w-[140px] relative group">
                   <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteComicFromHistory(item.comicSlug); setContinueList(prev => prev.filter(c => c.comicSlug !== item.comicSlug)); }}
-                    className="absolute top-1 right-1 z-10 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center text-white/60 hover:text-white hover:bg-red-500/80 transition-all opacity-0 group-hover:opacity-100"
+                    className="absolute top-1.5 right-1.5 z-10 w-7 h-7 rounded-full bg-red-500/90 flex items-center justify-center text-white shadow-lg hover:bg-red-600 transition-all"
                   >
-                    <X size={10} />
+                    <Trash2 size={13} />
                   </button>
                   <Link
                     to={`/baca/${item.chapterSlug}`}

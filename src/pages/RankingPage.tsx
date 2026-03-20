@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Trophy, Eye, Flame, Crown, Star, Gift, ImageOff } from "lucide-react";
-import { getViewLeaderboard, getStreakLeaderboard, formatViews } from "../lib/api";
+import { Trophy, Flame, Crown, Star, Gift, ImageOff } from "lucide-react";
+import type { Comic } from "../lib/api";
+import { getPopular, getStreakLeaderboard } from "../lib/api";
 
 const TYPE_TABS = [
   { key: "all", label: "Semua" },
@@ -9,16 +10,6 @@ const TYPE_TABS = [
   { key: "manga", label: "Manga" },
   { key: "manhua", label: "Manhua" },
 ];
-
-interface ComicRank {
-  rank: number;
-  comic_slug: string;
-  comic_title: string;
-  comic_image: string;
-  comic_type?: string;
-  view_count: number;
-  weekly_views: number;
-}
 
 interface StreakUser {
   rank: number;
@@ -28,22 +19,25 @@ interface StreakUser {
   longest_streak: number;
 }
 
-function PodiumCard({ comic, position }: { comic: ComicRank; position: 1 | 2 | 3 }) {
+function extractSlug(href: string): string {
+  return href?.split("/").filter(Boolean).pop() || "";
+}
+
+function PodiumCard({ comic, position }: { comic: Comic; position: 1 | 2 | 3 }) {
   const sizes = {
     1: { img: "w-24 h-24 sm:w-28 sm:h-28", ring: "ring-[#f97316]", badge: "bg-[#f97316]", mt: "mt-0" },
     2: { img: "w-18 h-18 sm:w-22 sm:h-22", ring: "ring-[#94a3b8]", badge: "bg-[#94a3b8]", mt: "mt-6" },
     3: { img: "w-18 h-18 sm:w-22 sm:h-22", ring: "ring-[#cd7f32]", badge: "bg-[#cd7f32]", mt: "mt-6" },
   };
   const s = sizes[position];
-  const medals = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
   return (
-    <Link to={`/komik/${comic.comic_slug}`} className={`flex flex-col items-center ${s.mt} group`}>
+    <Link to={`/komik/${extractSlug(comic.href)}`} className={`flex flex-col items-center ${s.mt} group`}>
       <div className={`relative ${s.img} rounded-full overflow-hidden ring-2 ${s.ring} bg-[#1a1a24]`}>
-        {comic.comic_image ? (
+        {comic.image ? (
           <img
-            src={comic.comic_image}
-            alt={comic.comic_title}
+            src={comic.image}
+            alt={comic.title}
             referrerPolicy="no-referrer"
             className="w-full h-full object-cover"
             onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
@@ -59,42 +53,41 @@ function PodiumCard({ comic, position }: { comic: ComicRank; position: 1 | 2 | 3
       </div>
       {position === 1 && <Flame size={16} className="text-[#f97316] mt-1 animate-pulse" />}
       <p className="text-xs font-body font-medium text-[#c0c0d0] group-hover:text-[#f97316] transition-colors text-center mt-1 max-w-[100px] truncate">
-        {comic.comic_title}
+        {comic.title}
       </p>
-      {comic.comic_type && (
-        <span className="text-[8px] font-body font-bold uppercase text-[#f97316]/70">{comic.comic_type}</span>
+      {comic.type && (
+        <span className="text-[8px] font-body font-bold uppercase text-[#f97316]/70">{comic.type}</span>
       )}
-      <span className="flex items-center gap-0.5 text-[10px] font-body text-[#8e8ea0] mt-0.5">
-        <Star size={8} className="text-amber-400" /> {formatViews(comic.weekly_views)}
-      </span>
+      {comic.rating && (
+        <span className="flex items-center gap-0.5 text-[10px] font-body text-[#8e8ea0] mt-0.5">
+          <Star size={8} className="text-amber-400" /> {comic.rating}
+        </span>
+      )}
     </Link>
   );
 }
 
 export default function RankingPage() {
   const [comicTab, setComicTab] = useState("all");
-  const [comics, setComics] = useState<ComicRank[]>([]);
+  const [allComics, setAllComics] = useState<Comic[]>([]);
   const [streakUsers, setStreakUsers] = useState<StreakUser[]>([]);
   const [loadingComics, setLoadingComics] = useState(true);
   const [loadingStreaks, setLoadingStreaks] = useState(true);
 
   useEffect(() => {
-    setLoadingComics(true);
-    getViewLeaderboard(comicTab, 20).then((data) => {
-      setComics(data);
+    getPopular().then((res) => {
+      setAllComics(res.data || []);
       setLoadingComics(false);
     });
-  }, [comicTab]);
-
-  useEffect(() => {
     getStreakLeaderboard(20).then((data) => {
       setStreakUsers(data);
       setLoadingStreaks(false);
     });
   }, []);
 
-  const top3 = comics.slice(0, 3);
-  const rest = comics.slice(3);
+  const filtered = comicTab === "all" ? allComics : allComics.filter(c => c.type?.toLowerCase() === comicTab);
+  const top3 = filtered.slice(0, 3);
+  const rest = filtered.slice(3, 20);
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top pb-20 md:pb-12">
@@ -132,6 +125,11 @@ export default function RankingPage() {
           <PodiumCard comic={top3[2]} position={3} />
         </div>
       )}
+      {!loadingComics && top3.length > 0 && top3.length < 3 && (
+        <div className="flex justify-center items-end gap-4 sm:gap-8 mb-8">
+          {top3.map((c, i) => <PodiumCard key={extractSlug(c.href)} comic={c} position={(i + 1) as 1 | 2 | 3} />)}
+        </div>
+      )}
 
       {loadingComics && (
         <div className="flex justify-center py-12">
@@ -147,61 +145,61 @@ export default function RankingPage() {
             Peringkat Lengkap
           </h2>
           <div className="space-y-2">
-            {rest.map((comic) => (
-              <Link
-                key={comic.comic_slug}
-                to={`/komik/${comic.comic_slug}`}
-                className={`flex items-center gap-3 p-3 rounded-xl border transition-all group ${
-                  comic.rank <= 3
-                    ? "bg-gradient-to-r from-[#f97316]/10 to-[#12121a] border-[#f97316]/20"
-                    : "bg-[#12121a] border-white/[0.04] hover:border-[#f97316]/20"
-                }`}
-              >
-                <div className="w-8 flex items-center justify-center shrink-0">
-                  {comic.rank <= 3 ? (
-                    <Crown size={16} className="text-amber-400" />
-                  ) : (
-                    <span className="text-sm font-display font-bold text-[#5c5c6e]">{comic.rank}</span>
-                  )}
-                </div>
-                <div className="w-11 h-14 rounded-lg overflow-hidden shrink-0 bg-[#1a1a24]">
-                  {comic.comic_image ? (
-                    <img
-                      src={comic.comic_image}
-                      alt={comic.comic_title}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-[#3a3a4a]">
-                      <ImageOff size={14} />
-                    </div>
-                  )}
-                </div>
-                <div className="flex-grow min-w-0">
-                  <p className="text-sm font-body font-medium text-[#c0c0d0] group-hover:text-[#f97316] transition-colors truncate">
-                    {comic.comic_title}
-                  </p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {comic.comic_type && (
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-body font-bold uppercase bg-[#f97316]/15 text-[#f97316]">
-                        {comic.comic_type}
-                      </span>
+            {rest.map((comic, idx) => {
+              const rank = idx + 4;
+              return (
+                <Link
+                  key={extractSlug(comic.href)}
+                  to={`/komik/${extractSlug(comic.href)}`}
+                  className="flex items-center gap-3 p-3 rounded-xl border bg-[#12121a] border-white/[0.04] hover:border-[#f97316]/20 transition-all group"
+                >
+                  <div className="w-8 flex items-center justify-center shrink-0">
+                    <span className="text-sm font-display font-bold text-[#5c5c6e]">{rank}</span>
+                  </div>
+                  <div className="w-11 h-14 rounded-lg overflow-hidden shrink-0 bg-[#1a1a24]">
+                    {comic.image ? (
+                      <img
+                        src={comic.image}
+                        alt={comic.title}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[#3a3a4a]">
+                        <ImageOff size={14} />
+                      </div>
                     )}
                   </div>
-                </div>
-                <div className="flex items-center gap-1 text-[#8e8ea0] shrink-0">
-                  <Eye size={12} />
-                  <span className="text-xs font-body font-medium">{formatViews(comic.weekly_views)}</span>
-                </div>
-              </Link>
-            ))}
+                  <div className="flex-grow min-w-0">
+                    <p className="text-sm font-body font-medium text-[#c0c0d0] group-hover:text-[#f97316] transition-colors truncate">
+                      {comic.title}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {comic.type && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-body font-bold uppercase bg-[#f97316]/15 text-[#f97316]">
+                          {comic.type}
+                        </span>
+                      )}
+                      {comic.chapter && (
+                        <span className="text-[10px] font-body text-[#5c5c6e]">{comic.chapter}</span>
+                      )}
+                    </div>
+                  </div>
+                  {comic.rating && (
+                    <div className="flex items-center gap-1 text-[#8e8ea0] shrink-0">
+                      <Star size={12} className="text-amber-400" />
+                      <span className="text-xs font-body font-medium">{comic.rating}</span>
+                    </div>
+                  )}
+                </Link>
+              );
+            })}
           </div>
         </section>
       )}
 
-      {!loadingComics && comics.length === 0 && (
+      {!loadingComics && filtered.length === 0 && (
         <div className="text-center py-12">
           <Trophy size={36} className="text-[#3a3a4a] mx-auto mb-3" />
           <p className="text-sm font-body text-[#8e8ea0]">Belum ada data peringkat. Mulai baca komik!</p>
