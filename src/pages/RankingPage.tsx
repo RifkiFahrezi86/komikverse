@@ -23,17 +23,17 @@ function extractSlug(href: string): string {
   return href?.split("/").filter(Boolean).pop() || "";
 }
 
-function PodiumCard({ comic, position }: { comic: Comic; position: 1 | 2 | 3 }) {
-  const sizes = {
-    1: { img: "w-24 h-24 sm:w-28 sm:h-28", ring: "ring-[#f97316]", badge: "bg-[#f97316]", mt: "mt-0" },
-    2: { img: "w-18 h-18 sm:w-22 sm:h-22", ring: "ring-[#94a3b8]", badge: "bg-[#94a3b8]", mt: "mt-6" },
-    3: { img: "w-18 h-18 sm:w-22 sm:h-22", ring: "ring-[#cd7f32]", badge: "bg-[#cd7f32]", mt: "mt-6" },
+function PodiumCard({ comic, position, views }: { comic: Comic; position: 1 | 2 | 3; views?: { view_count: number } }) {
+  const config = {
+    1: { img: "w-24 h-24 sm:w-28 sm:h-28", ring: "ring-[#f97316]", badge: "bg-[#f97316]", barH: "h-28 sm:h-32", barBg: "bg-gradient-to-t from-[#8B6914] to-[#C9A227]", mt: "" },
+    2: { img: "w-18 h-18 sm:w-22 sm:h-22", ring: "ring-[#94a3b8]", badge: "bg-[#94a3b8]", barH: "h-20 sm:h-24", barBg: "bg-gradient-to-t from-[#4a4a3a] to-[#7a7a5a]", mt: "mt-8" },
+    3: { img: "w-18 h-18 sm:w-22 sm:h-22", ring: "ring-[#cd7f32]", badge: "bg-[#cd7f32]", barH: "h-16 sm:h-20", barBg: "bg-gradient-to-t from-[#5a3a1a] to-[#8B5E3C]", mt: "mt-10" },
   };
-  const s = sizes[position];
+  const s = config[position];
 
   return (
-    <Link to={`/komik/${extractSlug(comic.href)}`} className={`flex flex-col items-center ${s.mt} group`}>
-      <div className={`relative ${s.img} rounded-full overflow-hidden ring-2 ${s.ring} bg-[#1a1a24]`}>
+    <Link to={`/komik/${extractSlug(comic.href)}`} className={`flex flex-col items-center ${s.mt} group w-[110px] sm:w-[130px]`}>
+      <div className={`relative ${s.img} rounded-full overflow-hidden ring-2 ${s.ring} bg-[#1a1a24] mb-1`}>
         {comic.image ? (
           <img
             src={comic.image}
@@ -51,18 +51,24 @@ function PodiumCard({ comic, position }: { comic: Comic; position: 1 | 2 | 3 }) 
           {position}
         </div>
       </div>
-      {position === 1 && <Flame size={16} className="text-[#f97316] mt-1 animate-pulse" />}
-      <p className="text-xs font-body font-medium text-[#c0c0d0] group-hover:text-[#f97316] transition-colors text-center mt-1 max-w-[100px] truncate">
+      {position === 1 && <Flame size={16} className="text-[#f97316] animate-pulse" />}
+      <p className="text-xs font-body font-medium text-[#c0c0d0] group-hover:text-[#f97316] transition-colors text-center max-w-full truncate">
         {comic.title}
       </p>
-      {comic.type && (
-        <span className="text-[8px] font-body font-bold uppercase text-[#f97316]/70">{comic.type}</span>
-      )}
       {comic.rating && (
-        <span className="flex items-center gap-0.5 text-[10px] font-body text-[#8e8ea0] mt-0.5">
+        <span className="flex items-center gap-0.5 text-[10px] font-body text-[#8e8ea0]">
           <Star size={8} className="text-amber-400" /> {comic.rating}
         </span>
       )}
+      {/* Podium Bar */}
+      <div className={`w-full ${s.barH} ${s.barBg} rounded-t-xl mt-1 flex flex-col items-center justify-end pb-2 opacity-80`}>
+        {views && views.view_count > 0 && (
+          <div className="flex items-center gap-0.5 text-white/70">
+            <Eye size={9} />
+            <span className="text-[9px] font-body font-medium">{formatViews(views.view_count)}</span>
+          </div>
+        )}
+      </div>
     </Link>
   );
 }
@@ -122,12 +128,12 @@ export default function RankingPage() {
         ))}
       </div>
 
-      {/* Podium Top 3 */}
+      {/* Podium Top 3 with Bar Chart */}
       {!loadingComics && filtered.length >= 3 && (
-        <div className="flex justify-center items-end gap-4 sm:gap-8 mb-8">
-          <PodiumCard comic={filtered[1]} position={2} />
-          <PodiumCard comic={filtered[0]} position={1} />
-          <PodiumCard comic={filtered[2]} position={3} />
+        <div className="flex justify-center items-end gap-2 sm:gap-4 mb-8">
+          <PodiumCard comic={filtered[1]} position={2} views={viewCounts[extractSlug(filtered[1].href)]} />
+          <PodiumCard comic={filtered[0]} position={1} views={viewCounts[extractSlug(filtered[0].href)]} />
+          <PodiumCard comic={filtered[2]} position={3} views={viewCounts[extractSlug(filtered[2].href)]} />
         </div>
       )}
 
