@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Trophy, Flame, Crown, Star, Gift, ImageOff } from "lucide-react";
+import { Trophy, Eye, Flame, Crown, Star, Gift, ImageOff } from "lucide-react";
 import type { Comic } from "../lib/api";
-import { getPopular, getStreakLeaderboard } from "../lib/api";
+import { getPopular, getStreakLeaderboard, batchGetViews, formatViews } from "../lib/api";
 
 const TYPE_TABS = [
   { key: "all", label: "Semua" },
@@ -70,14 +70,21 @@ function PodiumCard({ comic, position }: { comic: Comic; position: 1 | 2 | 3 }) 
 export default function RankingPage() {
   const [comicTab, setComicTab] = useState("all");
   const [allComics, setAllComics] = useState<Comic[]>([]);
+  const [viewCounts, setViewCounts] = useState<Record<string, { view_count: number; weekly_views: number }>>({});
   const [streakUsers, setStreakUsers] = useState<StreakUser[]>([]);
   const [loadingComics, setLoadingComics] = useState(true);
   const [loadingStreaks, setLoadingStreaks] = useState(true);
 
   useEffect(() => {
     getPopular().then((res) => {
-      setAllComics(res.data || []);
+      const comics = res.data || [];
+      setAllComics(comics);
       setLoadingComics(false);
+      // Fetch view counts for all comics
+      const slugs = comics.map(c => extractSlug(c.href)).filter(Boolean);
+      if (slugs.length > 0) {
+        batchGetViews(slugs).then(setViewCounts);
+      }
     });
     getStreakLeaderboard(20).then((data) => {
       setStreakUsers(data);
@@ -86,8 +93,6 @@ export default function RankingPage() {
   }, []);
 
   const filtered = comicTab === "all" ? allComics : allComics.filter(c => c.type?.toLowerCase() === comicTab);
-  const top3 = filtered.slice(0, 3);
-  const rest = filtered.slice(3, 20);
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top pb-20 md:pb-12">
@@ -117,17 +122,12 @@ export default function RankingPage() {
         ))}
       </div>
 
-      {/* Podium */}
-      {!loadingComics && top3.length >= 3 && (
+      {/* Podium Top 3 */}
+      {!loadingComics && filtered.length >= 3 && (
         <div className="flex justify-center items-end gap-4 sm:gap-8 mb-8">
-          <PodiumCard comic={top3[1]} position={2} />
-          <PodiumCard comic={top3[0]} position={1} />
-          <PodiumCard comic={top3[2]} position={3} />
-        </div>
-      )}
-      {!loadingComics && top3.length > 0 && top3.length < 3 && (
-        <div className="flex justify-center items-end gap-4 sm:gap-8 mb-8">
-          {top3.map((c, i) => <PodiumCard key={extractSlug(c.href)} comic={c} position={(i + 1) as 1 | 2 | 3} />)}
+          <PodiumCard comic={filtered[1]} position={2} />
+          <PodiumCard comic={filtered[0]} position={1} />
+          <PodiumCard comic={filtered[2]} position={3} />
         </div>
       )}
 
@@ -138,23 +138,36 @@ export default function RankingPage() {
       )}
 
       {/* Full Rankings */}
-      {rest.length > 0 && (
+      {filtered.length > 0 && (
         <section className="mb-10">
           <h2 className="font-display text-base text-white/85 font-bold flex items-center gap-2 mb-4">
             <span className="text-lg">📈</span>
             Peringkat Lengkap
           </h2>
           <div className="space-y-2">
-            {rest.map((comic, idx) => {
-              const rank = idx + 4;
+            {filtered.map((comic, idx) => {
+              const rank = idx + 1;
+              const slug = extractSlug(comic.href);
+              const views = viewCounts[slug];
               return (
                 <Link
-                  key={extractSlug(comic.href)}
-                  to={`/komik/${extractSlug(comic.href)}`}
-                  className="flex items-center gap-3 p-3 rounded-xl border bg-[#12121a] border-white/[0.04] hover:border-[#f97316]/20 transition-all group"
+                  key={slug}
+                  to={`/komik/${slug}`}
+                  className={`flex items-center gap-3 p-3 rounded-xl border transition-all group ${
+                    rank <= 3
+                      ? "bg-gradient-to-r from-[#f97316]/10 to-[#12121a] border-[#f97316]/20"
+                      : "bg-[#12121a] border-white/[0.04] hover:border-[#f97316]/20"
+                  }`}
                 >
                   <div className="w-8 flex items-center justify-center shrink-0">
-                    <span className="text-sm font-display font-bold text-[#5c5c6e]">{rank}</span>
+                    {rank <= 3 ? (
+                      <div className="flex flex-col items-center">
+                        <Crown size={16} className="text-amber-400" />
+                        <span className="text-[10px] font-display font-bold text-amber-400">{rank}</span>
+                      </div>
+                    ) : (
+                      <span className="text-sm font-display font-bold text-[#5c5c6e]">{rank}</span>
+                    )}
                   </div>
                   <div className="w-11 h-14 rounded-lg overflow-hidden shrink-0 bg-[#1a1a24]">
                     {comic.image ? (
@@ -186,12 +199,20 @@ export default function RankingPage() {
                       )}
                     </div>
                   </div>
-                  {comic.rating && (
-                    <div className="flex items-center gap-1 text-[#8e8ea0] shrink-0">
-                      <Star size={12} className="text-amber-400" />
-                      <span className="text-xs font-body font-medium">{comic.rating}</span>
-                    </div>
-                  )}
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    {comic.rating && (
+                      <div className="flex items-center gap-1">
+                        <Star size={11} className="text-amber-400" />
+                        <span className="text-xs font-body font-semibold text-amber-400">{comic.rating}</span>
+                      </div>
+                    )}
+                    {views && views.view_count > 0 && (
+                      <div className="flex items-center gap-1 text-[#8e8ea0]">
+                        <Eye size={10} />
+                        <span className="text-[10px] font-body font-medium">{formatViews(views.view_count)}</span>
+                      </div>
+                    )}
+                  </div>
                 </Link>
               );
             })}

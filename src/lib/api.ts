@@ -439,6 +439,25 @@ export function formatViews(n: number): string {
   return String(n);
 }
 
+export async function batchGetViews(slugs: string[]): Promise<Record<string, { view_count: number; weekly_views: number }>> {
+  if (slugs.length === 0) return {};
+  try {
+    const res = await fetch(`${VIEWS_BASE}/batch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slugs: slugs.slice(0, 50) }),
+    });
+    const data = await res.json();
+    const map: Record<string, { view_count: number; weekly_views: number }> = {};
+    for (const item of (data.data || [])) {
+      map[item.comic_slug] = { view_count: item.view_count, weekly_views: item.weekly_views };
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
 // ─── Streak Sync ───
 
 const AUTH_BASE = API_BASE.replace(/\/api\/?$/, "/api");
