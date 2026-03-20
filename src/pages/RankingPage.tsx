@@ -33,7 +33,7 @@ function PodiumCard({ comic, position }: { comic: Comic; position: 1 | 2 | 3 }) 
 
   return (
     <Link to={`/komik/${extractSlug(comic.href)}`} className={`flex flex-col items-center ${s.mt} group ${s.width}`}>
-      <div className={`relative ${s.img} rounded-full overflow-hidden ring-3 ${s.ring} bg-[#1a1a24] mb-1`}>
+      <div className={`relative ${s.img} rounded-full overflow-hidden ring-4 ${s.ring} bg-[#1a1a24] mb-1`}>
         {comic.image ? (
           <img
             src={comic.image}
