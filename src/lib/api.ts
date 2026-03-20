@@ -301,6 +301,11 @@ export async function getPopularMore(): Promise<Comic[]> {
   return fetchSecondaryProviders("/popular");
 }
 
+// Fetch popular comics from ALL providers (for ranking page)
+export async function getAllPopular(): Promise<Comic[]> {
+  return fetchAllProviders("/popular");
+}
+
 export async function getLatestMore(): Promise<Comic[]> {
   return fetchSecondaryProviders("/terbaru?page=1");
 }

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Trophy, Eye, Flame, Crown, Star, Gift, ImageOff } from "lucide-react";
+import { Trophy, Eye, Flame, Crown, Star, Gift, ImageOff, BarChart3 } from "lucide-react";
 import type { Comic } from "../lib/api";
-import { getPopular, getStreakLeaderboard, batchGetViews, formatViews } from "../lib/api";
+import { getAllPopular, getStreakLeaderboard, batchGetViews, formatViews } from "../lib/api";
 
 const TYPE_TABS = [
   { key: "all", label: "Semua" },
@@ -25,15 +25,15 @@ function extractSlug(href: string): string {
 
 function PodiumCard({ comic, position, views }: { comic: Comic; position: 1 | 2 | 3; views?: { view_count: number } }) {
   const config = {
-    1: { img: "w-24 h-24 sm:w-28 sm:h-28", ring: "ring-[#f97316]", badge: "bg-[#f97316]", barH: "h-28 sm:h-32", barBg: "bg-gradient-to-t from-[#8B6914] to-[#C9A227]", mt: "" },
-    2: { img: "w-18 h-18 sm:w-22 sm:h-22", ring: "ring-[#94a3b8]", badge: "bg-[#94a3b8]", barH: "h-20 sm:h-24", barBg: "bg-gradient-to-t from-[#4a4a3a] to-[#7a7a5a]", mt: "mt-8" },
-    3: { img: "w-18 h-18 sm:w-22 sm:h-22", ring: "ring-[#cd7f32]", badge: "bg-[#cd7f32]", barH: "h-16 sm:h-20", barBg: "bg-gradient-to-t from-[#5a3a1a] to-[#8B5E3C]", mt: "mt-10" },
+    1: { img: "w-28 h-28 sm:w-32 sm:h-32", ring: "ring-[#f97316]", badge: "bg-[#f97316]", badgeSize: "w-7 h-7 text-xs", barH: "h-28 sm:h-32", barBg: "bg-gradient-to-t from-[#8B6914] to-[#C9A227]", mt: "", width: "w-[130px] sm:w-[150px]" },
+    2: { img: "w-20 h-20 sm:w-24 sm:h-24", ring: "ring-[#94a3b8]", badge: "bg-[#94a3b8]", badgeSize: "w-6 h-6 text-[10px]", barH: "h-20 sm:h-24", barBg: "bg-gradient-to-t from-[#4a4a3a] to-[#7a7a5a]", mt: "mt-8", width: "w-[110px] sm:w-[130px]" },
+    3: { img: "w-20 h-20 sm:w-24 sm:h-24", ring: "ring-[#cd7f32]", badge: "bg-[#cd7f32]", badgeSize: "w-6 h-6 text-[10px]", barH: "h-16 sm:h-20", barBg: "bg-gradient-to-t from-[#5a3a1a] to-[#8B5E3C]", mt: "mt-10", width: "w-[110px] sm:w-[130px]" },
   };
   const s = config[position];
 
   return (
-    <Link to={`/komik/${extractSlug(comic.href)}`} className={`flex flex-col items-center ${s.mt} group w-[110px] sm:w-[130px]`}>
-      <div className={`relative ${s.img} rounded-full overflow-hidden ring-2 ${s.ring} bg-[#1a1a24] mb-1`}>
+    <Link to={`/komik/${extractSlug(comic.href)}`} className={`flex flex-col items-center ${s.mt} group ${s.width}`}>
+      <div className={`relative ${s.img} rounded-full overflow-hidden ring-3 ${s.ring} bg-[#1a1a24] mb-1`}>
         {comic.image ? (
           <img
             src={comic.image}
@@ -47,7 +47,7 @@ function PodiumCard({ comic, position, views }: { comic: Comic; position: 1 | 2 
             <ImageOff size={20} />
           </div>
         )}
-        <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full ${s.badge} flex items-center justify-center text-white text-[10px] font-bold shadow-lg`}>
+        <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 ${s.badgeSize} rounded-full ${s.badge} flex items-center justify-center text-white font-bold shadow-lg`}>
           {position}
         </div>
       </div>
@@ -82,8 +82,7 @@ export default function RankingPage() {
   const [loadingStreaks, setLoadingStreaks] = useState(true);
 
   useEffect(() => {
-    getPopular().then((res) => {
-      const comics = res.data || [];
+    getAllPopular().then((comics) => {
       setAllComics(comics);
       setLoadingComics(false);
       // Fetch view counts for all comics
@@ -147,7 +146,7 @@ export default function RankingPage() {
       {filtered.length > 0 && (
         <section className="mb-10">
           <h2 className="font-display text-base text-white/85 font-bold flex items-center gap-2 mb-4">
-            <span className="text-lg">📈</span>
+            <BarChart3 size={18} className="text-[#f97316]" />
             Peringkat Lengkap
           </h2>
           <div className="space-y-2">
