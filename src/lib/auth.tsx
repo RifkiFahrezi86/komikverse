@@ -32,19 +32,33 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+class AuthError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 async function authFetch(endpoint: string, options: RequestInit = {}) {
   const token = localStorage.getItem("kv_token");
-  const res = await fetch(`${AUTH_BASE}${endpoint}`, {
-    ...options,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${AUTH_BASE}${endpoint}`, {
+      ...options,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+  } catch {
+    // Network error (offline, DNS failure, timeout) — do NOT treat as auth failure
+    throw new Error("Network error");
+  }
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Request failed");
+  if (!res.ok) throw new AuthError(data.error || "Request failed", res.status);
   return data;
 }
 
@@ -65,12 +79,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((data) => {
         setUser(data.user);
         localStorage.setItem("kv_user", JSON.stringify(data.user));
+        // Auto-refresh token if server returns a new one
+        if (data.token) {
+          setToken(data.token);
+          localStorage.setItem("kv_token", data.token);
+        }
       })
-      .catch(() => {
-        setUser(null);
-        setToken(null);
-        localStorage.removeItem("kv_user");
-        localStorage.removeItem("kv_token");
+      .catch((err) => {
+        // Only logout on explicit 401/403 from server (expired/invalid token)
+        if (err instanceof AuthError && (err.status === 401 || err.status === 403)) {
+          setUser(null);
+          setToken(null);
+          localStorage.removeItem("kv_user");
+          localStorage.removeItem("kv_token");
+        }
+        // Network errors: keep user logged in with cached localStorage data
       })
       .finally(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
