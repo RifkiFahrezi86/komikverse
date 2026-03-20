@@ -74,6 +74,7 @@ function PodiumCard({ comic, position }: { comic: Comic; position: 1 | 2 | 3 }) 
 }
 
 export default function RankingPage() {
+  const [mainTab, setMainTab] = useState<"ranking" | "streak">("ranking");
   const [comicTab, setComicTab] = useState("all");
   const [allComics, setAllComics] = useState<Comic[]>([]);
   const [streakUsers, setStreakUsers] = useState<StreakUser[]>([]);
@@ -96,7 +97,6 @@ export default function RankingPage() {
     .sort((a, b) => {
       const ra = parseFloat(String(a.rating || "0")) || 0;
       const rb = parseFloat(String(b.rating || "0")) || 0;
-      // Comics with no/zero rating go to the bottom
       if (ra > 0 && rb <= 0) return -1;
       if (rb > 0 && ra <= 0) return 1;
       return rb - ra;
@@ -104,6 +104,34 @@ export default function RankingPage() {
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top pb-20 md:pb-12">
+      {/* Main Tabs: Peringkat vs Streak */}
+      <div className="flex items-center gap-2 mb-6">
+        <button
+          onClick={() => setMainTab("ranking")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-display font-bold transition-all ${
+            mainTab === "ranking"
+              ? "bg-[#f97316] text-white shadow-lg shadow-[#f97316]/20"
+              : "bg-[#12121a] text-[#8e8ea0] border border-white/[0.06] hover:text-white hover:border-[#f97316]/30"
+          }`}
+        >
+          <Trophy size={18} />
+          Papan Peringkat
+        </button>
+        <button
+          onClick={() => setMainTab("streak")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-display font-bold transition-all ${
+            mainTab === "streak"
+              ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20"
+              : "bg-[#12121a] text-[#8e8ea0] border border-white/[0.06] hover:text-white hover:border-amber-500/30"
+          }`}
+        >
+          <Flame size={18} />
+          Streak Leaderboard
+        </button>
+      </div>
+
+      {/* ===== RANKING TAB ===== */}
+      {mainTab === "ranking" && <>
       {/* Header */}
       <div className="mb-6">
         <h1 className="font-display text-xl sm:text-2xl text-white/85 font-bold flex items-center gap-2.5">
@@ -233,8 +261,10 @@ export default function RankingPage() {
           <p className="text-sm font-body text-[#8e8ea0]">Belum ada data peringkat. Mulai baca komik!</p>
         </div>
       )}
+      </>}
 
-      {/* Streak Leaderboard */}
+      {/* ===== STREAK TAB ===== */}
+      {mainTab === "streak" && <>
       <section className="mb-8">
         <h2 className="font-display text-base text-white/85 font-bold flex items-center gap-2 mb-2">
           <Crown size={18} className="text-amber-400" />
@@ -303,6 +333,7 @@ export default function RankingPage() {
           Baca komik setiap hari selama 30 hari berturut-turut untuk mendapatkan reward bebas iklan selama 30 hari.
         </p>
       </div>
+      </>}
     </div>
   );
 }
