@@ -229,11 +229,7 @@ export default function RankingPage() {
                           {comic.type}
                         </span>
                       )}
-                      {comic._provider && (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-body font-medium bg-white/[0.05] text-[#8e8ea0]">
-                          {comic._provider === 'shinigami' ? '🔮' : comic._provider === 'komiku' ? '📚' : '⚔️'} {comic._provider}
-                        </span>
-                      )}
+
                       {comic.chapter && (
                         <span className="text-[10px] font-body text-[#5c5c6e]">{comic.chapter}</span>
                       )}
