@@ -233,6 +233,7 @@ export default function ProfilePage() {
                 {comic.lastChapterSlug && (
                   <Link
                     to={`/baca/${comic.lastChapterSlug}`}
+                    state={{ comicSlug: comic.slug, comicTitle: comic.title, comicImage: comic.image, comicType: comic.type }}
                     className="flex items-center gap-2 ml-15 px-3 py-1.5 rounded-lg bg-[#f97316]/10 border border-[#f97316]/20 hover:bg-[#f97316]/20 transition-all w-fit"
                   >
                     <Play size={12} className="text-[#f97316] fill-[#f97316]" />

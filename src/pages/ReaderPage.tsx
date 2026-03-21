@@ -62,7 +62,6 @@ export default function ReaderPage() {
   const [currentPage, setCurrentPage] = useState(0);
   const [navVisible, setNavVisible] = useState(true);
   const lastScrollY = useRef(0);
-  const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const chapters = routerState?.chapters || [];
   const comicSlug = routerState?.comicSlug || "";
@@ -131,8 +130,11 @@ export default function ReaderPage() {
     if (viewMode !== "long-strip") return;
     const onScroll = () => {
       const y = window.scrollY;
-      if (Math.abs(y - lastScrollY.current) > 30) {
+      const delta = y - lastScrollY.current;
+      if (delta > 40) {
         setNavVisible(false);
+      } else if (delta < -20) {
+        setNavVisible(true);
       }
       lastScrollY.current = y;
     };
@@ -142,19 +144,10 @@ export default function ReaderPage() {
 
   useEffect(() => {
     setNavVisible(true);
-    hideTimer.current = setTimeout(() => setNavVisible(false), 3000);
-    return () => clearTimeout(hideTimer.current);
   }, [slug]);
 
   const toggleNav = useCallback(() => {
-    setNavVisible((v) => {
-      const next = !v;
-      clearTimeout(hideTimer.current);
-      if (next) {
-        hideTimer.current = setTimeout(() => setNavVisible(false), 4000);
-      }
-      return next;
-    });
+    setNavVisible((v) => !v);
   }, []);
 
   const goToChapter = (ch: Chapter) => {
@@ -217,10 +210,11 @@ export default function ReaderPage() {
             {comicSlug && (
               <Link
                 to={`/komik/${comicSlug}`}
-                className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] transition-colors"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#f97316]/10 border border-[#f97316]/25 text-[#f97316] hover:bg-[#f97316]/20 transition-colors"
                 title="Detail Komik"
               >
-                <BookOpen size={16} />
+                <BookOpen size={14} />
+                <span className="text-[11px] font-body font-semibold">Detail</span>
               </Link>
             )}
             <button
@@ -295,12 +289,10 @@ export default function ReaderPage() {
         )}
       </div>
 
-      {/* Bottom chapter nav */}
+      {/* Bottom chapter nav — always visible */}
       {chapters.length > 0 && (
         <div
-          className={`sticky bottom-0 left-0 right-0 z-50 transition-transform duration-300 ${
-            navVisible ? "translate-y-0" : "translate-y-full"
-          }`}
+          className="sticky bottom-0 left-0 right-0 z-50"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="bg-[#0a0a0f]/95 backdrop-blur-xl border-t border-white/[0.04]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
@@ -339,11 +331,9 @@ export default function ReaderPage() {
         </div>
       )}
 
-      {/* Scroll buttons — show/hide with nav */}
+      {/* Scroll buttons */}
       {viewMode === "long-strip" && (
-        <div className={`fixed right-4 z-50 flex flex-col gap-2 transition-all ${
-          navVisible ? "bottom-24 opacity-100" : "bottom-4 opacity-0 pointer-events-none"
-        }`}>
+        <div className="fixed right-4 bottom-24 z-50 flex flex-col gap-2">
           <button
             onClick={(e) => {
               e.stopPropagation();
