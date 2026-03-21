@@ -14,7 +14,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import type { Chapter, ChapterData } from "../lib/api";
-import { getChapterImages } from "../lib/api";
+import { getChapterImages, getComicDetail } from "../lib/api";
 import { recordRead } from "../lib/history";
 import AdSlot from "../components/AdSlot";
 
@@ -62,13 +62,23 @@ export default function ReaderPage() {
   const [currentPage, setCurrentPage] = useState(0);
   const [navVisible, setNavVisible] = useState(true);
   const lastScrollY = useRef(0);
+  const [fetchedChapters, setFetchedChapters] = useState<Chapter[]>([]);
 
-  const chapters = routerState?.chapters || [];
+  const stateChapters = routerState?.chapters || [];
+  const chapters = stateChapters.length > 0 ? stateChapters : fetchedChapters;
   const comicSlug = routerState?.comicSlug || "";
   const comicTitle = routerState?.comicTitle || "";
   const comicImage = routerState?.comicImage || "";
   const comicType = routerState?.comicType;
   const genres = routerState?.genres;
+
+  // Fetch chapter list from API if not available in state
+  useEffect(() => {
+    if (stateChapters.length > 0 || !comicSlug) return;
+    getComicDetail(comicSlug).then((res) => {
+      if (res.data?.chapters) setFetchedChapters(res.data.chapters);
+    }).catch(() => {});
+  }, [comicSlug, stateChapters.length]);
 
   const { prevChapter, nextChapter } = useMemo(() => {
     if (!slug || chapters.length === 0) return { prevChapter: null, nextChapter: null };
