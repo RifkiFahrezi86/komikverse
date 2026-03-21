@@ -138,7 +138,7 @@ export default function RankingPage() {
           <Trophy size={24} className="text-[#f97316]" />
           Papan Peringkat
         </h1>
-        <p className="text-xs font-body text-[#8e8ea0] mt-1">Komik terpopuler minggu ini</p>
+        <p className="text-xs font-body text-[#8e8ea0] mt-1">Peringkat real-time dari semua provider</p>
       </div>
 
       {/* Type Tabs */}
@@ -227,6 +227,11 @@ export default function RankingPage() {
                       {comic.type && (
                         <span className="px-1.5 py-0.5 rounded text-[9px] font-body font-bold uppercase bg-[#f97316]/15 text-[#f97316]">
                           {comic.type}
+                        </span>
+                      )}
+                      {comic._provider && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-body font-medium bg-white/[0.05] text-[#8e8ea0]">
+                          {comic._provider === 'shinigami' ? '🔮' : comic._provider === 'komiku' ? '📚' : '⚔️'} {comic._provider}
                         </span>
                       )}
                       {comic.chapter && (

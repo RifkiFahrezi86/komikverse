@@ -280,28 +280,53 @@ export default function ComicDetailPage() {
 
       {/* Chapter Section */}
       <section>
-        <div className="rounded-xl bg-[#12121a] border border-white/[0.04] p-4 mb-3">
+        <div className="rounded-xl bg-gradient-to-r from-[#f97316]/[0.08] to-[#12121a] border border-[#f97316]/20 p-4 mb-3">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <h2 className="font-display text-base text-white/85 font-bold flex items-center gap-2">
-              <BookOpen size={16} className="text-[#f97316]" />
-              Daftar Chapter
-              <span className="text-[10px] text-[#5c5c6e] font-body font-normal ml-1">
-                ({comic.chapters.length})
-              </span>
-            </h2>
+            <div>
+              <h2 className="font-display text-base text-white/90 font-bold flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#f97316]/20 flex items-center justify-center">
+                  <BookOpen size={16} className="text-[#f97316]" />
+                </div>
+                Daftar Chapter
+              </h2>
+              <div className="flex items-center gap-3 mt-2 ml-10">
+                <span className="text-[11px] font-body font-semibold text-[#f97316] bg-[#f97316]/10 px-2 py-0.5 rounded-full">
+                  {comic.chapters.length} Chapter
+                </span>
+                {readChapterSlugs.size > 0 && (
+                  <span className="text-[11px] font-body font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <CheckCircle2 size={10} /> {readChapterSlugs.size} Dibaca
+                  </span>
+                )}
+              </div>
+            </div>
             <button
               onClick={() => setSortAsc(!sortAsc)}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-body font-medium transition-all ${
+              className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-body font-medium transition-all border ${
                 sortAsc
-                  ? "bg-[#f97316]/10 text-[#f97316]"
-                  : "text-[#8e8ea0] hover:text-white bg-white/[0.04]"
+                  ? "bg-[#f97316]/10 text-[#f97316] border-[#f97316]/20"
+                  : "text-[#8e8ea0] hover:text-white bg-white/[0.04] border-white/[0.06]"
               }`}
             >
               <ArrowUpDown size={12} />
               {sortAsc ? "Terlama" : "Terbaru"}
             </button>
           </div>
-          <div className="relative">
+          {/* Progress bar */}
+          {readChapterSlugs.size > 0 && comic.chapters.length > 0 && (
+            <div className="mt-2 mb-1">
+              <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-[#f97316] to-amber-400 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (readChapterSlugs.size / comic.chapters.length) * 100)}%` }}
+                />
+              </div>
+              <p className="text-[10px] font-body text-[#8e8ea0] mt-1">
+                {Math.round((readChapterSlugs.size / comic.chapters.length) * 100)}% selesai
+              </p>
+            </div>
+          )}
+          <div className="relative mt-2">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5c5c6e]" />
             <input
               type="text"
@@ -339,13 +364,23 @@ export default function ComicDetailPage() {
                       key={ch.href + i}
                       to={`/baca/${chSlug}`}
                       state={readerState}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/[0.03] transition-all group ${
-                        isLastRead ? "bg-[#f97316]/[0.06] border border-[#f97316]/20" : ""
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all group border ${
+                        isLastRead
+                          ? "bg-[#f97316]/[0.08] border-[#f97316]/25 shadow-sm shadow-[#f97316]/5"
+                          : isRead
+                            ? "bg-emerald-500/[0.03] border-emerald-500/10 hover:border-emerald-500/20"
+                            : "border-transparent hover:bg-white/[0.03]"
                       }`}
                     >
-                      {isRead && (
-                        <CheckCircle2 size={14} className="text-emerald-500/70 shrink-0" />
-                      )}
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold font-body ${
+                        isLastRead
+                          ? "bg-[#f97316]/20 text-[#f97316]"
+                          : isRead
+                            ? "bg-emerald-500/15 text-emerald-400"
+                            : "bg-white/[0.04] text-[#5c5c6e]"
+                      }`}>
+                        {isRead ? <CheckCircle2 size={12} /> : (i + 1)}
+                      </div>
                       <div className="flex-grow min-w-0">
                         <p className={`text-sm font-body font-medium transition-colors truncate ${
                           isRead

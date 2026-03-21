@@ -79,6 +79,7 @@ export function getContinueReading(): {
   chapterSlug: string;
   chapterTitle: string;
   readAt: number;
+  chaptersRead: number;
 }[] {
   const history = getHistory();
   const comicMap = new Map<string, ReadEntry>();
@@ -89,6 +90,19 @@ export function getContinueReading(): {
       comicMap.set(h.comicSlug, h);
     }
   }
+  // Count chapters per comic
+  const chapterCounts = new Map<string, number>();
+  for (const h of history) {
+    const existing = chapterCounts.get(h.comicSlug) || 0;
+    chapterCounts.set(h.comicSlug, existing + 1);
+  }
+  // Deduplicate chapter slugs per comic for accurate count
+  const uniqueChapterCounts = new Map<string, Set<string>>();
+  for (const h of history) {
+    if (!uniqueChapterCounts.has(h.comicSlug)) uniqueChapterCounts.set(h.comicSlug, new Set());
+    uniqueChapterCounts.get(h.comicSlug)!.add(h.chapterSlug);
+  }
+
   return [...comicMap.values()]
     .sort((a, b) => b.readAt - a.readAt)
     .slice(0, 10)
@@ -100,6 +114,7 @@ export function getContinueReading(): {
       chapterSlug: h.chapterSlug,
       chapterTitle: h.chapterTitle,
       readAt: h.readAt,
+      chaptersRead: uniqueChapterCounts.get(h.comicSlug)?.size || 0,
     }));
 }
 

@@ -128,30 +128,40 @@ export default function ProfilePage() {
             <Heart size={16} className="text-pink-400" />
             Genre Favoritmu
           </h2>
-          <div className="rounded-xl bg-[#12121a] border border-white/[0.04] p-4">
-            <p className="text-xs font-body text-[#8e8ea0] mb-3">
-              Berdasarkan kebiasaan bacamu, kamu penyuka genre ini:
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {stats.topGenres.map((g, i) => (
-                <Link
-                  key={g.genre}
-                  to={`/genre/${encodeURIComponent(g.genre.toLowerCase())}`}
-                  state={{ name: g.genre }}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all hover:scale-105 ${
-                    i === 0
-                      ? "bg-[#f97316]/10 border-[#f97316]/30 text-[#f97316]"
-                      : "bg-white/[0.03] border-white/[0.06] text-[#c0c0d0]"
-                  }`}
-                >
-                  <span className="text-sm font-body font-medium">{g.genre}</span>
-                  <span className={`text-[10px] font-body font-bold px-1.5 py-0.5 rounded ${
-                    i === 0 ? "bg-[#f97316]/20" : "bg-white/[0.06]"
-                  }`}>
-                    {g.count}x
-                  </span>
-                </Link>
-              ))}
+          <div className="rounded-xl bg-gradient-to-br from-pink-500/[0.06] to-[#12121a] border border-pink-500/15 p-4">
+            <div className="space-y-2.5">
+              {stats.topGenres.map((g, i) => {
+                const maxCount = stats.topGenres[0].count;
+                const pct = Math.max(8, (g.count / maxCount) * 100);
+                const colors = [
+                  { bar: "from-[#f97316] to-amber-400", text: "text-[#f97316]", bg: "bg-[#f97316]/12", border: "border-[#f97316]/25", icon: "🔥" },
+                  { bar: "from-pink-500 to-rose-400", text: "text-pink-400", bg: "bg-pink-500/10", border: "border-pink-500/20", icon: "💖" },
+                  { bar: "from-violet-500 to-purple-400", text: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20", icon: "✨" },
+                  { bar: "from-cyan-500 to-teal-400", text: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/20", icon: "🌊" },
+                  { bar: "from-emerald-500 to-green-400", text: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", icon: "🍃" },
+                ];
+                const c = colors[i] || colors[4];
+                return (
+                  <Link
+                    key={g.genre}
+                    to={`/genre/${encodeURIComponent(g.genre.toLowerCase())}`}
+                    state={{ name: g.genre }}
+                    className={`block p-3 rounded-xl border ${c.border} ${c.bg} hover:scale-[1.02] transition-all`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{c.icon}</span>
+                        <span className={`text-sm font-body font-semibold ${c.text}`}>{g.genre}</span>
+                        {i === 0 && <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-[#f97316]/20 text-[#f97316] uppercase">Top 1</span>}
+                      </div>
+                      <span className={`text-xs font-body font-bold ${c.text}`}>{g.count} chapter</span>
+                    </div>
+                    <div className="h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
+                      <div className={`h-full bg-gradient-to-r ${c.bar} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </section>

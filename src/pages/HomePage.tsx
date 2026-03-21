@@ -227,6 +227,11 @@ export default function HomePage() {
                         <p className="text-[10px] font-body font-medium text-white/90 truncate">
                           {item.chapterTitle}
                         </p>
+                        {item.chaptersRead > 0 && (
+                          <p className="text-[9px] font-body text-white/50 mt-0.5">
+                            {item.chaptersRead} chapter dibaca
+                          </p>
+                        )}
                       </div>
                       <div className="absolute top-2 left-2">
                         <div className="w-6 h-6 rounded-full bg-[#f97316] flex items-center justify-center shadow-lg">
@@ -244,6 +249,7 @@ export default function HomePage() {
                     <p className="text-xs font-body font-medium text-[#c0c0d0] group-hover:text-[#f97316] transition-colors truncate">
                       {item.comicTitle}
                     </p>
+                    <p className="text-[10px] font-body text-[#f97316] mt-0.5">Lanjutkan Baca →</p>
                   </Link>
                 </div>
               ))}
@@ -292,13 +298,14 @@ export default function HomePage() {
           <section className="mb-10">
             <SectionHeader
               title="Untukmu"
-              icon={<Heart size={20} className="text-[#f97316]" />}
+              icon={<Heart size={20} className="text-pink-400" />}
             />
+            <p className="text-xs font-body text-[#8e8ea0] -mt-4 mb-4">Berdasarkan genre favoritmu</p>
             {genreRecs.map((gr) => (
               <div key={gr.genre} className="mb-5">
                 <Link
                   to={`/genre/${gr.genre.toLowerCase().replace(/\s+/g, "-")}`}
-                  className="inline-flex items-center gap-1.5 text-sm font-body font-semibold text-[#c0c0d0] hover:text-[#f97316] transition-colors mb-3"
+                  className="inline-flex items-center gap-1.5 text-sm font-body font-semibold text-[#c0c0d0] hover:text-[#f97316] transition-colors mb-3 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.04] hover:border-[#f97316]/20"
                 >
                   {gr.genre} <ChevronRight size={14} />
                 </Link>
