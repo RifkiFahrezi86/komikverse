@@ -18,7 +18,7 @@ export interface ReadingStats {
   currentStreak: number;
   longestStreak: number;
   topGenres: { genre: string; count: number }[];
-  recentComics: { slug: string; title: string; image: string; type?: string; lastRead: number; chaptersRead: number }[];
+  recentComics: { slug: string; title: string; image: string; type?: string; lastRead: number; chaptersRead: number; lastChapterSlug: string; lastChapterTitle: string }[];
   readsByDay: Record<string, number>; // "YYYY-MM-DD" → count
 }
 
@@ -130,13 +130,17 @@ export function getReadingStats(): ReadingStats {
 
   // Total chapters & comics
   const uniqueChapters = new Set(history.map((h) => h.chapterSlug));
-  const comicMap = new Map<string, { title: string; image: string; type?: string; lastRead: number; chapters: Set<string> }>();
+  const comicMap = new Map<string, { title: string; image: string; type?: string; lastRead: number; chapters: Set<string>; lastChapterSlug: string; lastChapterTitle: string }>();
 
   for (const h of history) {
     const existing = comicMap.get(h.comicSlug);
     if (existing) {
       existing.chapters.add(h.chapterSlug);
-      if (h.readAt > existing.lastRead) existing.lastRead = h.readAt;
+      if (h.readAt > existing.lastRead) {
+        existing.lastRead = h.readAt;
+        existing.lastChapterSlug = h.chapterSlug;
+        existing.lastChapterTitle = h.chapterTitle;
+      }
     } else {
       comicMap.set(h.comicSlug, {
         title: h.comicTitle,
@@ -144,6 +148,8 @@ export function getReadingStats(): ReadingStats {
         type: h.comicType,
         lastRead: h.readAt,
         chapters: new Set([h.chapterSlug]),
+        lastChapterSlug: h.chapterSlug,
+        lastChapterTitle: h.chapterTitle,
       });
     }
   }
@@ -216,6 +222,8 @@ export function getReadingStats(): ReadingStats {
       type: data.type,
       lastRead: data.lastRead,
       chaptersRead: data.chapters.size,
+      lastChapterSlug: data.lastChapterSlug,
+      lastChapterTitle: data.lastChapterTitle,
     }))
     .sort((a, b) => b.lastRead - a.lastRead)
     .slice(0, 10);

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, X, Compass, Library, BookOpen, Home, Bookmark, LogIn, LogOut, Shield, User as UserIcon, KeyRound, Trophy } from "lucide-react";
+import { Search, X, Compass, LayoutGrid, Library, BookOpen, Home, Bookmark, LogIn, LogOut, Shield, User as UserIcon, KeyRound, Trophy } from "lucide-react";
 import { useAuth } from "../lib/auth";
 
 export default function Navbar() {
@@ -172,7 +172,7 @@ export default function Navbar() {
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0f]/95 backdrop-blur-xl border-t border-white/[0.04]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex items-center justify-around py-2">
           <MobileNavItem to="/" icon={<Home size={20} />} label="Home" active={isActive("/")} />
-          <MobileNavItem to="/terbaru" icon={<Compass size={20} />} label="Explore" active={isActive("/terbaru")} />
+          <MobileNavItem to="/genre" icon={<LayoutGrid size={20} />} label="Genre" active={isActive("/genre")} />
           <MobileNavItem to="/bookmark" icon={<Bookmark size={20} />} label="Library" active={isActive("/bookmark")} />
           <MobileNavItem to="/ranking" icon={<Trophy size={20} />} label="Ranking" active={isActive("/ranking")} />
           <MobileNavItem

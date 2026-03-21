@@ -12,6 +12,7 @@ import {
   ChevronRight,
   ImageOff,
   Trash2,
+  Play,
 } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { getReadingStats, deleteComicFromHistory, clearAllHistory, type ReadingStats } from "../lib/history";
@@ -186,47 +187,60 @@ export default function ProfilePage() {
             {stats.recentComics.map((comic) => (
               <div
                 key={comic.slug}
-                className="flex items-center gap-3 p-3 rounded-xl bg-[#12121a] border border-white/[0.04] hover:border-[#f97316]/20 transition-all group"
+                className="flex flex-col gap-2 p-3 rounded-xl bg-[#12121a] border border-white/[0.04] hover:border-[#f97316]/20 transition-all group"
               >
-                <Link to={`/komik/${comic.slug}`} className="w-12 h-16 rounded-lg overflow-hidden shrink-0 bg-[#1a1a24]">
-                  {comic.image ? (
-                    <img
-                      src={comic.image}
-                      alt={comic.title}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-[#3a3a4a]">
-                      <ImageOff size={16} />
-                    </div>
-                  )}
-                </Link>
-                <Link to={`/komik/${comic.slug}`} className="flex-grow min-w-0">
-                  <p className="text-sm font-body font-medium text-[#c0c0d0] group-hover:text-[#f97316] transition-colors truncate">
-                    {comic.title}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {comic.type && (
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-body font-bold uppercase bg-[#f97316]/15 text-[#f97316]">
-                        {comic.type}
-                      </span>
+                <div className="flex items-center gap-3">
+                  <Link to={`/komik/${comic.slug}`} className="w-12 h-16 rounded-lg overflow-hidden shrink-0 bg-[#1a1a24]">
+                    {comic.image ? (
+                      <img
+                        src={comic.image}
+                        alt={comic.title}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[#3a3a4a]">
+                        <ImageOff size={16} />
+                      </div>
                     )}
-                    <span className="text-[10px] font-body text-[#5c5c6e]">
-                      {comic.chaptersRead} chapter · {formatDate(comic.lastRead)}
+                  </Link>
+                  <Link to={`/komik/${comic.slug}`} className="flex-grow min-w-0">
+                    <p className="text-sm font-body font-medium text-[#c0c0d0] group-hover:text-[#f97316] transition-colors truncate">
+                      {comic.title}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {comic.type && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-body font-bold uppercase bg-[#f97316]/15 text-[#f97316]">
+                          {comic.type}
+                        </span>
+                      )}
+                      <span className="text-[10px] font-body text-[#5c5c6e]">
+                        {comic.chaptersRead} chapter · {formatDate(comic.lastRead)}
+                      </span>
+                    </div>
+                  </Link>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteComicFromHistory(comic.slug); setStats(getReadingStats()); }}
+                    className="p-1.5 rounded-lg text-[#5c5c6e] hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                  <Link to={`/komik/${comic.slug}`}>
+                    <ChevronRight size={16} className="text-[#3a3a4a] group-hover:text-[#f97316] transition-colors shrink-0" />
+                  </Link>
+                </div>
+                {comic.lastChapterSlug && (
+                  <Link
+                    to={`/baca/${comic.lastChapterSlug}`}
+                    className="flex items-center gap-2 ml-15 px-3 py-1.5 rounded-lg bg-[#f97316]/10 border border-[#f97316]/20 hover:bg-[#f97316]/20 transition-all w-fit"
+                  >
+                    <Play size={12} className="text-[#f97316] fill-[#f97316]" />
+                    <span className="text-[11px] font-body font-semibold text-[#f97316]">
+                      Lanjutkan · {comic.lastChapterTitle || comic.lastChapterSlug}
                     </span>
-                  </div>
-                </Link>
-                <button
-                  onClick={(e) => { e.stopPropagation(); deleteComicFromHistory(comic.slug); setStats(getReadingStats()); }}
-                  className="p-1.5 rounded-lg text-[#5c5c6e] hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0"
-                >
-                  <Trash2 size={14} />
-                </button>
-                <Link to={`/komik/${comic.slug}`}>
-                  <ChevronRight size={16} className="text-[#3a3a4a] group-hover:text-[#f97316] transition-colors shrink-0" />
-                </Link>
+                  </Link>
+                )}
               </div>
             ))}
           </div>
