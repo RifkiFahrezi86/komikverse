@@ -138,7 +138,7 @@ export default function RankingPage() {
           <Trophy size={24} className="text-[#f97316]" />
           Papan Peringkat
         </h1>
-        <p className="text-xs font-body text-[#8e8ea0] mt-1">Peringkat real-time dari semua provider</p>
+        <p className="text-xs font-body text-[#8e8ea0] mt-1">Diperbarui setiap minggu</p>
       </div>
 
       {/* Type Tabs */}
