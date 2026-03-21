@@ -289,47 +289,61 @@ export default function ReaderPage() {
         )}
       </div>
 
-      {/* Bottom chapter nav — always visible */}
-      {chapters.length > 0 && (
-        <div
-          className="sticky bottom-0 left-0 right-0 z-50"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="bg-[#0a0a0f]/95 backdrop-blur-xl border-t border-white/[0.04]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-            <div className="max-w-4xl mx-auto px-4 py-3">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => prevChapter && goToChapter(prevChapter)}
-                  disabled={!prevChapter}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-body font-medium text-sm transition-all ${
-                    prevChapter
-                      ? "bg-white/[0.04] border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/30"
-                      : "bg-white/[0.02] text-[#3a3a4a] cursor-not-allowed"
-                  }`}
-                >
-                  <SkipBack size={14} />
-                  <span className="hidden sm:inline">Prev Chapter</span>
-                  <span className="sm:hidden">Prev</span>
-                </button>
+      {/* Bottom chapter nav */}
+      <div
+        className={`sticky bottom-0 left-0 right-0 z-50 transition-transform duration-300 ${
+          chapters.length > 0 ? (navVisible ? "translate-y-0" : "translate-y-full") : "translate-y-0"
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-[#0a0a0f]/95 backdrop-blur-xl border-t border-white/[0.04]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="max-w-4xl mx-auto px-4 py-3">
+            <div className="flex items-center gap-2">
+              {chapters.length > 0 ? (
+                <>
+                  <button
+                    onClick={() => prevChapter && goToChapter(prevChapter)}
+                    disabled={!prevChapter}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-body font-medium text-sm transition-all ${
+                      prevChapter
+                        ? "bg-white/[0.04] border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/30"
+                        : "bg-white/[0.02] text-[#3a3a4a] cursor-not-allowed"
+                    }`}
+                  >
+                    <SkipBack size={14} />
+                    <span className="hidden sm:inline">Prev Chapter</span>
+                    <span className="sm:hidden">Prev</span>
+                  </button>
 
-                <button
-                  onClick={() => nextChapter && goToChapter(nextChapter)}
-                  disabled={!nextChapter}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-body font-medium text-sm transition-all ${
-                    nextChapter
-                      ? "bg-[#f97316] text-white hover:bg-[#ea580c]"
-                      : "bg-white/[0.02] text-[#3a3a4a] cursor-not-allowed"
-                  }`}
-                >
-                  <span className="hidden sm:inline">Next Chapter</span>
-                  <span className="sm:hidden">Next</span>
-                  <SkipForward size={14} />
-                </button>
-              </div>
+                  <button
+                    onClick={() => nextChapter && goToChapter(nextChapter)}
+                    disabled={!nextChapter}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-body font-medium text-sm transition-all ${
+                      nextChapter
+                        ? "bg-[#f97316] text-white hover:bg-[#ea580c]"
+                        : "bg-white/[0.02] text-[#3a3a4a] cursor-not-allowed"
+                    }`}
+                  >
+                    <span className="hidden sm:inline">Next Chapter</span>
+                    <span className="sm:hidden">Next</span>
+                    <SkipForward size={14} />
+                  </button>
+                </>
+              ) : (
+                comicSlug && (
+                  <Link
+                    to={`/komik/${comicSlug}`}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-[#f97316] text-white font-body font-medium text-sm hover:bg-[#ea580c] transition-all"
+                  >
+                    <BookOpen size={14} />
+                    Lihat Semua Chapter
+                  </Link>
+                )
+              )}
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Scroll buttons */}
       {viewMode === "long-strip" && (
