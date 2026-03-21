@@ -347,7 +347,11 @@ export default function ReaderPage() {
 
       {/* Scroll buttons */}
       {viewMode === "long-strip" && (
-        <div className="fixed right-4 bottom-24 z-50 flex flex-col gap-2">
+        <div className={`fixed right-4 bottom-20 z-[60] flex flex-col gap-2 transition-opacity duration-300 ${
+          navVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+          onClick={(e) => e.stopPropagation()}
+        >
           <button
             onClick={(e) => {
               e.stopPropagation();
