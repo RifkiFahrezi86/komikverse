@@ -82,7 +82,7 @@ const SLOT_META: Record<string, { desc: string; adType: string; hint: string; si
   "reader-top": { desc: "Di atas gambar chapter", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)", size: "728×90" },
   "reader-bottom": { desc: "Di bawah gambar chapter", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)", size: "728×90" },
   "reader-between": { desc: "Disisipkan antar gambar chapter (setiap 10 gambar)", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)", size: "728×90" },
-  "popup-global": { desc: "Popup iklan visual (Banner/Native)", adType: "Banner / Native", hint: "Gunakan kode: Banner 728×90 atau Native Banner", size: "728×90" },
+  "popup-global": { desc: "Banner iklan di bawah navbar (semua halaman)", adType: "Banner / Native", hint: "Gunakan kode: Banner 728×90 atau Native Banner", size: "728×90" },
   "native-home": { desc: "Widget native banner di homepage", adType: "Native Banner", hint: "Gunakan kode: Native Banner (container div + data-cfasync)", size: "Widget" },
   "native-detail": { desc: "Widget native banner di detail komik", adType: "Native Banner", hint: "Gunakan kode: Native Banner (container div + data-cfasync)", size: "Widget" },
 };
@@ -172,11 +172,13 @@ function LayoutPreview({ position, slotName, size }: { position: string; slotNam
 
   if (slotName === "popup-global" || slotName.includes("popup")) {
     return (
-      <div className="flex items-center justify-center" style={{ minHeight: '100px' }}>
-        <div className="border-2 border-dashed border-[#f97316]/50 rounded-lg flex items-center justify-center bg-[#f97316]/5 relative" style={{ width: '200px', height: '90px' }}>
-          <span className="text-[9px] font-mono text-[#f97316]">POPUP AD — {size}</span>
+      <div className="space-y-1">
+        <div className="h-3 w-full bg-white/10 rounded" />
+        <div className="border-2 border-dashed border-[#f97316]/50 rounded flex items-center justify-center bg-[#f97316]/5 relative" style={{ height: '40px' }}>
+          <span className="text-[9px] font-mono text-[#f97316]">BANNER — {size}</span>
           <div className="absolute top-1 right-1 w-3 h-3 rounded-full bg-white/20 flex items-center justify-center"><span className="text-[6px] text-white/60">✕</span></div>
         </div>
+        <div className="space-y-0.5">{[1,2,3].map(i => <div key={i} className="h-10 bg-white/5 rounded" />)}</div>
       </div>
     );
   }

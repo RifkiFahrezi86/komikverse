@@ -4,8 +4,8 @@ import PopupAd from "../components/PopupAd";
 export default function ReaderLayout() {
   return (
     <>
-      <Outlet />
       <PopupAd />
+      <Outlet />
     </>
   );
 }

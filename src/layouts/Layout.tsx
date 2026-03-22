@@ -7,11 +7,11 @@ export default function Layout() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
+      <PopupAd />
       <main className="flex-grow">
         <Outlet />
       </main>
       <Footer />
-      <PopupAd />
     </div>
   );
 }

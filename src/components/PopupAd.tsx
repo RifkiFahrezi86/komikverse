@@ -4,18 +4,15 @@ import { useAuth } from "../lib/auth";
 import { fetchAds, injectAdCode } from "./AdSlot";
 
 /**
- * Popup / Interstitial ad overlay with close button.
+ * Inline dismissible banner ad below navbar.
  * Uses the "popup-global" ad slot from the database.
- * Shows once per session (sessionStorage), dismissed with close button.
- * Appears 3 seconds after page load so content loads first.
- *
- * NOTE: This slot should contain a VISUAL ad (Banner, Native Banner).
- * Do NOT put Popunder/Social Bar code here — those are invisible scripts.
+ * Dismissed once per session (sessionStorage).
  */
 export default function PopupAd() {
   const { isAdFree, loading } = useAuth();
   const [visible, setVisible] = useState(false);
   const [code, setCode] = useState("");
+  const [closing, setClosing] = useState(false);
   const adRef = useRef<HTMLDivElement>(null);
   const injectedRef = useRef(false);
 
@@ -23,21 +20,15 @@ export default function PopupAd() {
     if (loading || isAdFree) return;
     if (sessionStorage.getItem("kv_popup_closed")) return;
 
-    const timer = setTimeout(() => {
-      fetchAds().then((ads) => {
-        const c = ads["popup-global"];
-        if (!c) return;
-        // Skip if code is a Popunder/Social Bar (no visual content)
-        // These only contain a single external script with no atOptions or container div
-        if (!c.includes("atOptions") && !c.includes("container-") && !c.includes("<div")) {
-          return;
-        }
-        setCode(c);
-        setVisible(true);
-      });
-    }, 3000);
-
-    return () => clearTimeout(timer);
+    fetchAds().then((ads) => {
+      const c = ads["popup-global"];
+      if (!c) return;
+      if (!c.includes("atOptions") && !c.includes("container-") && !c.includes("<div")) {
+        return;
+      }
+      setCode(c);
+      setVisible(true);
+    });
   }, [isAdFree, loading]);
 
   useEffect(() => {
@@ -47,27 +38,30 @@ export default function PopupAd() {
   }, [visible, code]);
 
   const close = () => {
-    setVisible(false);
-    sessionStorage.setItem("kv_popup_closed", "1");
+    setClosing(true);
+    setTimeout(() => {
+      setVisible(false);
+      sessionStorage.setItem("kv_popup_closed", "1");
+    }, 300);
   };
 
   if (!visible || !code || isAdFree) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4" onClick={close}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-      <div
-        className="relative max-w-[750px] w-full bg-[#16161f] rounded-xl border border-white/[0.08] shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div
+      className={`w-full bg-[#16161f] border-b border-white/[0.06] transition-all duration-300 ${
+        closing ? "max-h-0 opacity-0 overflow-hidden" : "max-h-[200px] opacity-100"
+      }`}
+    >
+      <div className="max-w-5xl mx-auto px-3 py-2 flex items-center gap-2">
+        <div ref={adRef} className="flex-1 flex items-center justify-center min-h-[50px] overflow-hidden" />
         <button
           onClick={close}
-          className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white/80 hover:text-white hover:bg-black/80 transition-colors"
+          className="shrink-0 w-7 h-7 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors"
           title="Tutup"
         >
-          <X size={18} />
+          <X size={14} />
         </button>
-        <div ref={adRef} className="p-4 flex items-center justify-center min-h-[200px]" />
       </div>
     </div>
   );
