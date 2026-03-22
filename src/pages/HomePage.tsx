@@ -384,6 +384,9 @@ export default function HomePage() {
             <p className="text-sm text-[#5c5c6e] font-body py-8 text-center">Tidak ada komik populer untuk tipe ini.</p>
           )}
         </section>
+
+        <AdSlot name="home-bottom-1" className="mb-6 rounded-xl overflow-hidden" />
+        <AdSlot name="home-bottom-2" className="mb-6 rounded-xl overflow-hidden" />
       </div>
     </div>
   );

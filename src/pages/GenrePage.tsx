@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { LayoutGrid } from "lucide-react";
 import { getGenres } from "../lib/api";
 import type { Genre } from "../lib/api";
+import AdSlot from "../components/AdSlot";
 
 const FALLBACK_GENRES = [
   "Action", "Adventure", "Comedy", "Demon", "Drama", "Ecchi", "Fantasy",
@@ -62,6 +63,8 @@ export default function GenrePage() {
           })}
         </div>
       )}
+
+      <AdSlot name="browse-banner" className="mt-6 rounded-xl overflow-hidden" />
     </div>
   );
 }
