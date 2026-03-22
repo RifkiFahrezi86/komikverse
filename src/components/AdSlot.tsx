@@ -223,7 +223,6 @@ export default function AdSlot({ name, className = "" }: { name: string; classNa
   const { isAdFree } = useAuth();
   const [code, setCode] = useState("");
   const [dismissed, setDismissed] = useState(false);
-  const [empty, setEmpty] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const injectedRef = useRef(false);
 
@@ -239,25 +238,12 @@ export default function AdSlot({ name, className = "" }: { name: string; classNa
     injectedRef.current = true;
     const cleanup = injectAdCode(containerRef.current, code);
 
-    // Auto-hide if ad slot remains visually empty after 5 seconds
-    const timer = setTimeout(() => {
-      const el = containerRef.current;
-      if (!el) return;
-      const hasIframe = el.querySelector("iframe");
-      const hasImg = el.querySelector("img");
-      const hasVisibleChild = el.offsetHeight > 10;
-      if (!hasIframe && !hasImg && !hasVisibleChild) {
-        setEmpty(true);
-      }
-    }, 5000);
-
     return () => {
-      clearTimeout(timer);
       if (cleanup) cleanup();
     };
   }, [code, dismissed]);
 
-  if (isAdFree || !code || dismissed || empty) return null;
+  if (isAdFree || !code || dismissed) return null;
 
   return (
     <div className={`ad-slot relative ${className}`}>
