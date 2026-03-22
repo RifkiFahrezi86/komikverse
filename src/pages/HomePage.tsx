@@ -7,6 +7,7 @@ import { getContinueReading, deleteComicFromHistory, getReadingStats } from "../
 import ComicCard, { UpdateCard, RecommendCard } from "../components/ComicCard";
 import ComicCardSkeleton, { UpdateCardSkeleton, RecommendCardSkeleton } from "../components/ComicCardSkeleton";
 import AdSlot from "../components/AdSlot";
+import HomeScriptAds from "../components/HomeScriptAds";
 
 const TYPE_TABS = [
   { key: "all", label: "Semua" },
@@ -181,6 +182,9 @@ export default function HomePage() {
 
   return (
     <div className="page-top pb-20 md:pb-12">
+      {/* Script-only ads: Popunder + Social Bar */}
+      <HomeScriptAds />
+
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
 
         {/* Ad Slot - Home Top */}
