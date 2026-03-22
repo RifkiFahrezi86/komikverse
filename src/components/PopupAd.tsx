@@ -4,8 +4,8 @@ import { useAuth } from "../lib/auth";
 import { fetchAds, injectAdCode } from "./AdSlot";
 
 /**
- * Fixed bottom banner ad for the "popup-global" slot.
- * Sticks to bottom of screen with close button. Dismiss once per session.
+ * Inline banner ad for the "popup-global" slot.
+ * Displayed below navbar, above content. Dismiss once per session.
  */
 export default function PopupAd() {
   const { isAdFree, loading } = useAuth();
@@ -41,7 +41,7 @@ export default function PopupAd() {
   if (!visible || !code || isAdFree) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#16161f] border-t border-white/[0.06] isolate">
+    <div className="w-full bg-[#16161f] border-b border-white/[0.06] isolate relative z-0">
       <div className="max-w-5xl mx-auto px-2 py-1.5 flex items-center gap-2">
         <div ref={adRef} className="flex-1 flex items-center justify-center overflow-hidden" />
         <button
