@@ -12,8 +12,6 @@ export default function PopupAd() {
   const { isAdFree, loading } = useAuth();
   const [visible, setVisible] = useState(false);
   const [code, setCode] = useState("");
-  const [closing, setClosing] = useState(false);
-  const [empty, setEmpty] = useState(false);
   const adRef = useRef<HTMLDivElement>(null);
   const injectedRef = useRef(false);
 
@@ -33,38 +31,18 @@ export default function PopupAd() {
     if (!visible || !code || !adRef.current || injectedRef.current) return;
     injectedRef.current = true;
     const cleanup = injectAdCode(adRef.current, code);
-
-    const timer = setTimeout(() => {
-      const el = adRef.current;
-      if (!el) return;
-      if (!el.querySelector("iframe") && !el.querySelector("img") && el.offsetHeight < 10) {
-        setEmpty(true);
-        setVisible(false);
-      }
-    }, 5000);
-
-    return () => {
-      clearTimeout(timer);
-      if (cleanup) cleanup();
-    };
+    return () => { if (cleanup) cleanup(); };
   }, [visible, code]);
 
   const close = () => {
-    setClosing(true);
-    setTimeout(() => {
-      setVisible(false);
-      sessionStorage.setItem("kv_popup_closed", "1");
-    }, 300);
+    setVisible(false);
+    sessionStorage.setItem("kv_popup_closed", "1");
   };
 
-  if (!visible || !code || isAdFree || empty) return null;
+  if (!visible || !code || isAdFree) return null;
 
   return (
-    <div
-      className={`w-full isolate relative z-0 transition-all duration-300 ${
-        closing ? "max-h-0 opacity-0 overflow-hidden" : "max-h-[200px] opacity-100"
-      }`}
-    >
+    <div className="w-full isolate relative z-0">
       <div className="relative flex justify-center py-1">
         <div ref={adRef} className="overflow-hidden" />
         <button
