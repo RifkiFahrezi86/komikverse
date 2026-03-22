@@ -4,9 +4,8 @@ import { useAuth } from "../lib/auth";
 import { fetchAds, injectAdCode } from "./AdSlot";
 
 /**
- * Inline dismissible banner ad for the "popup-global" slot.
- * Displayed below navbar with close button. Dismiss once per session.
- * Uses `isolate` to prevent ad iframe z-index from overlapping navbar.
+ * Fixed bottom banner ad for the "popup-global" slot.
+ * Sticks to bottom of screen with close button. Dismiss once per session.
  */
 export default function PopupAd() {
   const { isAdFree, loading } = useAuth();
@@ -31,17 +30,7 @@ export default function PopupAd() {
     if (!visible || !code || !adRef.current || injectedRef.current) return;
     injectedRef.current = true;
     const cleanup = injectAdCode(adRef.current, code);
-
-    // Hide container if ad doesn't actually render (e.g. ad blocker)
-    const timer = setTimeout(() => {
-      if (!adRef.current) return;
-      const hasContent = adRef.current.querySelector("iframe, img, ins, .adsbygoogle");
-      if (!hasContent && adRef.current.offsetHeight < 10) {
-        setVisible(false);
-      }
-    }, 3000);
-
-    return () => { clearTimeout(timer); if (cleanup) cleanup(); };
+    return () => { if (cleanup) cleanup(); };
   }, [visible, code]);
 
   const close = () => {
@@ -52,7 +41,7 @@ export default function PopupAd() {
   if (!visible || !code || isAdFree) return null;
 
   return (
-    <div className="w-full bg-[#16161f] border-b border-white/[0.06] isolate relative z-0">
+    <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#16161f] border-t border-white/[0.06] isolate">
       <div className="max-w-5xl mx-auto px-2 py-1.5 flex items-center gap-2">
         <div ref={adRef} className="flex-1 flex items-center justify-center overflow-hidden" />
         <button
