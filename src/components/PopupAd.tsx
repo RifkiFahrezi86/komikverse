@@ -31,7 +31,17 @@ export default function PopupAd() {
     if (!visible || !code || !adRef.current || injectedRef.current) return;
     injectedRef.current = true;
     const cleanup = injectAdCode(adRef.current, code);
-    return () => { if (cleanup) cleanup(); };
+
+    // Hide container if ad doesn't actually render (e.g. ad blocker)
+    const timer = setTimeout(() => {
+      if (!adRef.current) return;
+      const hasContent = adRef.current.querySelector("iframe, img, ins, .adsbygoogle");
+      if (!hasContent && adRef.current.offsetHeight < 10) {
+        setVisible(false);
+      }
+    }, 3000);
+
+    return () => { clearTimeout(timer); if (cleanup) cleanup(); };
   }, [visible, code]);
 
   const close = () => {
