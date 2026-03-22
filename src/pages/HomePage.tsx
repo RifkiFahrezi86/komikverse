@@ -257,6 +257,9 @@ export default function HomePage() {
           </section>
         )}
 
+        {/* ─── Ad between sections ─── */}
+        <AdSlot name="popup-global" className="mb-10" />
+
         {/* ─── Rekomendasi Section ─── */}
         <section className="mb-10">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
