@@ -42,6 +42,7 @@ const AD_TYPE_LABELS: Record<DetectedAdType, string> = {
 const ACCEPTABLE_TYPES: Record<string, DetectedAdType[]> = {
   "Banner 728×90": ["banner"],
   "Banner 468×60": ["banner"],
+  "Banner 320×50": ["banner"],
   "Banner 300×250": ["banner"],
   "Native Banner": ["native"],
 };
@@ -84,9 +85,9 @@ const SLOT_META: Record<string, { desc: string; adType: string; hint: string; si
   "reader-between": { desc: "Disisipkan antar gambar chapter (setiap 10 gambar)", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)", size: "728×90" },
   "popup-global": { desc: "Banner inline di bawah navbar (semua halaman, bisa di-dismiss)", adType: "Banner 468×60", hint: "Gunakan kode: Banner 468×60 (atOptions iframe)", size: "468×60" },
   "native-detail": { desc: "Widget native banner di detail komik", adType: "Native Banner", hint: "Gunakan kode: Native Banner (container div + data-cfasync)", size: "Widget" },
-  "home-bottom-1": { desc: "Banner bawah homepage (setelah section populer)", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)", size: "728×90" },
-  "home-bottom-2": { desc: "Banner paling bawah homepage", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)", size: "728×90" },
-  "browse-banner": { desc: "Banner di halaman Genre & Pencarian", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)", size: "728×90" },
+  "home-bottom-1": { desc: "Banner bawah homepage (setelah section populer)", adType: "Banner 320×50", hint: "Gunakan kode: Banner 320×50 (atOptions iframe)", size: "320×50" },
+  "home-bottom-2": { desc: "Banner paling bawah homepage", adType: "Banner 320×50", hint: "Gunakan kode: Banner 320×50 (atOptions iframe)", size: "320×50" },
+  "browse-banner": { desc: "Banner di halaman Genre & Pencarian", adType: "Banner 320×50", hint: "Gunakan kode: Banner 320×50 (atOptions iframe)", size: "320×50" },
 };
 
 // Position options for new slots
