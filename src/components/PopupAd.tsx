@@ -4,28 +4,26 @@ import { useAuth } from "../lib/auth";
 import { fetchAds, injectAdCode } from "./AdSlot";
 
 /**
- * Inline dismissible banner ad below navbar.
- * Uses the "popup-global" ad slot from the database.
- * Dismissed once per session (sessionStorage).
+ * Inline dismissible banner ad for the "popup-global" slot.
+ * Displayed below navbar with close button. Dismiss once per session.
+ * Uses `isolate` to prevent ad iframe z-index from overlapping navbar.
  */
 export default function PopupAd() {
   const { isAdFree, loading } = useAuth();
   const [visible, setVisible] = useState(false);
   const [code, setCode] = useState("");
   const [closing, setClosing] = useState(false);
+  const [empty, setEmpty] = useState(false);
   const adRef = useRef<HTMLDivElement>(null);
   const injectedRef = useRef(false);
 
   useEffect(() => {
     if (loading || isAdFree) return;
     if (sessionStorage.getItem("kv_popup_closed")) return;
-
     fetchAds().then((ads) => {
       const c = ads["popup-global"];
       if (!c) return;
-      if (!c.includes("atOptions") && !c.includes("container-") && !c.includes("<div")) {
-        return;
-      }
+      if (!c.includes("atOptions") && !c.includes("container-") && !c.includes("<div")) return;
       setCode(c);
       setVisible(true);
     });
@@ -34,7 +32,21 @@ export default function PopupAd() {
   useEffect(() => {
     if (!visible || !code || !adRef.current || injectedRef.current) return;
     injectedRef.current = true;
-    injectAdCode(adRef.current, code);
+    const cleanup = injectAdCode(adRef.current, code);
+
+    const timer = setTimeout(() => {
+      const el = adRef.current;
+      if (!el) return;
+      if (!el.querySelector("iframe") && !el.querySelector("img") && el.offsetHeight < 10) {
+        setEmpty(true);
+        setVisible(false);
+      }
+    }, 5000);
+
+    return () => {
+      clearTimeout(timer);
+      if (cleanup) cleanup();
+    };
   }, [visible, code]);
 
   const close = () => {
@@ -45,20 +57,20 @@ export default function PopupAd() {
     }, 300);
   };
 
-  if (!visible || !code || isAdFree) return null;
+  if (!visible || !code || isAdFree || empty) return null;
 
   return (
     <div
-      className={`w-full bg-[#16161f] border-b border-white/[0.06] transition-all duration-300 ${
+      className={`w-full isolate relative z-0 transition-all duration-300 ${
         closing ? "max-h-0 opacity-0 overflow-hidden" : "max-h-[200px] opacity-100"
       }`}
     >
-      <div className="max-w-5xl mx-auto px-2 py-1.5 flex items-center gap-2">
-        <div ref={adRef} className="flex-1 flex items-center justify-center min-h-[60px] overflow-hidden" />
+      <div className="relative flex justify-center py-1">
+        <div ref={adRef} className="overflow-hidden" />
         <button
           onClick={close}
-          className="shrink-0 w-7 h-7 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors"
-          title="Tutup"
+          className="absolute top-1 right-2 z-10 w-7 h-7 rounded-full bg-black/70 border border-white/20 flex items-center justify-center text-white/80 hover:text-white hover:bg-red-600 transition-colors shadow-lg"
+          title="Tutup iklan"
         >
           <X size={14} />
         </button>
