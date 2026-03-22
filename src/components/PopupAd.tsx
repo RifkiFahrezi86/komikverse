@@ -42,15 +42,15 @@ export default function PopupAd() {
   if (!visible || !code || isAdFree) return null;
 
   return (
-    <div className="w-full isolate relative z-0">
-      <div className="relative flex justify-center py-1">
-        <div ref={adRef} className="overflow-hidden" />
+    <div className="w-full bg-[#16161f] border-b border-white/[0.06] isolate relative z-0">
+      <div className="max-w-5xl mx-auto px-2 py-1.5 flex items-center gap-2">
+        <div ref={adRef} className="flex-1 flex items-center justify-center overflow-hidden" />
         <button
           onClick={close}
-          className="absolute top-1 right-2 z-10 w-7 h-7 rounded-full bg-black/70 border border-white/20 flex items-center justify-center text-white/80 hover:text-white hover:bg-red-600 transition-colors shadow-lg"
+          className="shrink-0 w-8 h-8 rounded-full bg-white/[0.08] border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-red-600 transition-colors"
           title="Tutup iklan"
         >
-          <X size={14} />
+          <X size={16} />
         </button>
       </div>
     </div>
