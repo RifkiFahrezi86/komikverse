@@ -41,8 +41,8 @@ const AD_TYPE_LABELS: Record<DetectedAdType, string> = {
 
 const ACCEPTABLE_TYPES: Record<string, DetectedAdType[]> = {
   "Banner 728×90": ["banner"],
+  "Banner 468×60": ["banner"],
   "Banner 300×250": ["banner"],
-  "Banner / Native": ["banner", "native"],
   "Native Banner": ["native"],
 };
 
@@ -82,8 +82,7 @@ const SLOT_META: Record<string, { desc: string; adType: string; hint: string; si
   "reader-top": { desc: "Di atas gambar chapter", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)", size: "728×90" },
   "reader-bottom": { desc: "Di bawah gambar chapter", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)", size: "728×90" },
   "reader-between": { desc: "Disisipkan antar gambar chapter (setiap 10 gambar)", adType: "Banner 728×90", hint: "Gunakan kode: Banner 728×90 (atOptions iframe)", size: "728×90" },
-  "popup-global": { desc: "Banner iklan di bawah navbar (semua halaman)", adType: "Banner / Native", hint: "Gunakan kode: Banner 728×90 atau Native Banner", size: "728×90" },
-  "native-home": { desc: "Widget native banner di homepage", adType: "Native Banner", hint: "Gunakan kode: Native Banner (container div + data-cfasync)", size: "Widget" },
+  "popup-global": { desc: "Banner inline di bawah navbar (semua halaman, bisa di-dismiss)", adType: "Banner 468×60", hint: "Gunakan kode: Banner 468×60 (atOptions iframe)", size: "468×60" },
   "native-detail": { desc: "Widget native banner di detail komik", adType: "Native Banner", hint: "Gunakan kode: Native Banner (container div + data-cfasync)", size: "Widget" },
 };
 
@@ -98,6 +97,7 @@ const POSITION_OPTIONS = [
 // Size options for new slots
 const SIZE_OPTIONS = [
   { value: "728x90", label: "728×90 (Leaderboard)" },
+  { value: "468x60", label: "468×60 (Full Banner)" },
   { value: "300x250", label: "300×250 (Medium Rectangle)" },
   { value: "320x50", label: "320×50 (Mobile Banner)" },
   { value: "160x600", label: "160×600 (Wide Skyscraper)" },
@@ -426,12 +426,12 @@ export default function AdminAdsPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-body text-[#8e8ea0] ml-6">
           <div>
-            <span className="text-white/70 font-semibold">Banner 728×90 / 300×250</span>
+            <span className="text-white/70 font-semibold">Banner (728×90 / 468×60 / 300×250)</span>
             <p className="text-[10px] mt-0.5">Mengandung <code className="text-[#f97316] bg-white/5 px-1 rounded">atOptions</code> + <code className="text-[#f97316] bg-white/5 px-1 rounded">format: 'iframe'</code>. Tampil visual sebagai banner.</p>
           </div>
           <div>
             <span className="text-white/70 font-semibold">Native Banner</span>
-            <p className="text-[10px] mt-0.5">Mengandung <code className="text-[#f97316] bg-white/5 px-1 rounded">data-cfasync</code> + <code className="text-[#f97316] bg-white/5 px-1 rounded">&lt;div id="container-..."&gt;</code>. Tampil sebagai widget.</p>
+            <p className="text-[10px] mt-0.5">Mengandung <code className="text-[#f97316] bg-white/5 px-1 rounded">data-cfasync</code> + <code className="text-[#f97316] bg-white/5 px-1 rounded">&lt;div id="container-..."&gt;</code>. Tampil sebagai widget. ⚠️ Hanya 1 unit tersedia — gunakan di 1 slot saja.</p>
           </div>
         </div>
       </div>

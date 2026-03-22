@@ -53,8 +53,8 @@ export default function PopupAd() {
         closing ? "max-h-0 opacity-0 overflow-hidden" : "max-h-[200px] opacity-100"
       }`}
     >
-      <div className="max-w-5xl mx-auto px-3 py-2 flex items-center gap-2">
-        <div ref={adRef} className="flex-1 flex items-center justify-center min-h-[50px] overflow-hidden" />
+      <div className="max-w-5xl mx-auto px-2 py-1.5 flex items-center gap-2">
+        <div ref={adRef} className="flex-1 flex items-center justify-center min-h-[60px] overflow-hidden" />
         <button
           onClick={close}
           className="shrink-0 w-7 h-7 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors"
