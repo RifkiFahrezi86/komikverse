@@ -82,9 +82,9 @@ export default function ProfilePage() {
               }`}>
                 {user.role}
               </span>
-              {stats && stats.currentStreak > 0 && (
+              {(Math.max(stats?.currentStreak ?? 0, user.current_streak ?? 0)) > 0 && (
                 <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-body font-bold bg-orange-500/15 text-orange-400">
-                  <Flame size={10} /> {stats.currentStreak} hari streak
+                  <Flame size={10} /> {Math.max(stats?.currentStreak ?? 0, user.current_streak ?? 0)} hari streak
                 </span>
               )}
             </div>
@@ -109,13 +109,13 @@ export default function ProfilePage() {
           />
           <StatCard
             icon={<Flame size={20} className="text-orange-400" />}
-            value={stats.currentStreak}
+            value={Math.max(stats.currentStreak, user.current_streak ?? 0)}
             label="Streak Saat Ini"
             color="bg-orange-500/15"
           />
           <StatCard
             icon={<Trophy size={20} className="text-amber-400" />}
-            value={stats.longestStreak}
+            value={Math.max(stats.longestStreak, user.longest_streak ?? 0)}
             label="Streak Terpanjang"
             color="bg-amber-500/15"
           />
