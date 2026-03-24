@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { getReadingStats, deleteComicFromHistory, clearAllHistory, type ReadingStats } from "../lib/history";
+import { syncStreak } from "../lib/api";
 
 function StatCard({ icon, value, label, color }: { icon: React.ReactNode; value: string | number; label: string; color: string }) {
   return (
@@ -39,7 +40,14 @@ export default function ProfilePage() {
   const [stats, setStats] = useState<ReadingStats | null>(null);
 
   useEffect(() => {
-    setStats(getReadingStats());
+    const s = getReadingStats();
+    setStats(s);
+    // Sync local streak to server on profile visit
+    if (s.currentStreak > 0 || s.longestStreak > 0) {
+      const today = new Date();
+      const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      syncStreak(s.currentStreak, s.longestStreak, dateStr);
+    }
   }, []);
 
   if (!user) {
