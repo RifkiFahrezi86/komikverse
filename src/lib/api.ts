@@ -25,7 +25,8 @@ export function setProvider(provider: string) {
 
 // In-memory response cache with TTL
 const responseCache = new Map<string, { data: unknown; expires: number }>();
-const CACHE_TTL = 3 * 60 * 1000; // 3 minutes
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes default
+const CACHE_TTL_LONG = 10 * 60 * 1000; // 10 minutes for static data (genre, read)
 const inflight = new Map<string, Promise<unknown>>();
 
 function getCached<T>(key: string): T | null {
@@ -42,6 +43,14 @@ function setCache(key: string, data: unknown, ttl = CACHE_TTL) {
     const first = responseCache.keys().next().value;
     if (first) responseCache.delete(first);
   }
+}
+
+// Choose cache TTL based on endpoint type
+function getCacheTtl(endpoint: string): number {
+  if (endpoint.startsWith("/genre") || endpoint.startsWith("/read/")) return CACHE_TTL_LONG;
+  if (endpoint.startsWith("/detail/")) return CACHE_TTL_LONG;
+  if (endpoint.startsWith("/popular") || endpoint.startsWith("/recommended")) return CACHE_TTL;
+  return CACHE_TTL; // /terbaru, /search
 }
 
 // Generate HMAC token for API authentication — cache the CryptoKey
@@ -193,7 +202,7 @@ async function fetchApi<T>(endpoint: string): Promise<ApiResponse<T>> {
       if (res.status === 429) throw new Error("Terlalu banyak permintaan. Coba lagi nanti.");
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data: ApiResponse<T> = await res.json();
-      setCache(cacheKey, data);
+      setCache(cacheKey, data, getCacheTtl(endpoint));
       return data;
     } finally {
       clearTimeout(timeoutId);
@@ -225,7 +234,7 @@ async function fetchApiWithProvider<T>(endpoint: string, provider: string): Prom
       if (res.status === 429) throw new Error("Terlalu banyak permintaan. Coba lagi nanti.");
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data: ApiResponse<T> = await res.json();
-      setCache(cacheKey, data);
+      setCache(cacheKey, data, getCacheTtl(endpoint));
       return data;
     } finally {
       clearTimeout(timeoutId);
@@ -410,7 +419,12 @@ export async function getComicsByGenre(slug: string, page = 1): Promise<ApiRespo
 
 const VIEWS_BASE = API_BASE.replace(/\/api\/?$/, "/api/views");
 
+// Debounce: track each comic only once per session
+const trackedThisSession = new Set<string>();
+
 export async function trackView(comic_slug: string, comic_title: string, comic_image: string, comic_type?: string): Promise<void> {
+  if (trackedThisSession.has(comic_slug)) return; // Already tracked this session
+  trackedThisSession.add(comic_slug);
   try {
     await fetch(`${VIEWS_BASE}/track`, {
       method: "POST",
@@ -420,21 +434,36 @@ export async function trackView(comic_slug: string, comic_title: string, comic_i
   } catch { /* fire-and-forget */ }
 }
 
+// Cache view counts in memory (5 min)
+const viewCountCache = new Map<string, { data: { view_count: number; weekly_views: number }; expires: number }>();
+
 export async function getViewCount(slug: string): Promise<{ view_count: number; weekly_views: number }> {
+  const cached = viewCountCache.get(slug);
+  if (cached && cached.expires > Date.now()) return cached.data;
   try {
     const res = await fetch(`${VIEWS_BASE}/${slug}`);
     const data = await res.json();
-    return data.data || { view_count: 0, weekly_views: 0 };
+    const result = data.data || { view_count: 0, weekly_views: 0 };
+    viewCountCache.set(slug, { data: result, expires: Date.now() + 5 * 60 * 1000 });
+    return result;
   } catch {
     return { view_count: 0, weekly_views: 0 };
   }
 }
 
+// Cache leaderboard in memory (5 min)
+let leaderboardCache: { data: any[]; type: string; expires: number } | null = null;
+
 export async function getViewLeaderboard(type = "all", limit = 20): Promise<any[]> {
+  if (leaderboardCache && leaderboardCache.type === type && leaderboardCache.expires > Date.now()) {
+    return leaderboardCache.data;
+  }
   try {
     const res = await fetch(`${VIEWS_BASE}/leaderboard?type=${type}&limit=${limit}`);
     const data = await res.json();
-    return data.data || [];
+    const result = data.data || [];
+    leaderboardCache = { data: result, type, expires: Date.now() + 5 * 60 * 1000 };
+    return result;
   } catch {
     return [];
   }
@@ -448,20 +477,35 @@ export function formatViews(n: number): string {
 
 export async function batchGetViews(slugs: string[]): Promise<Record<string, { view_count: number; weekly_views: number }>> {
   if (slugs.length === 0) return {};
+
+  // Return cached entries first, only fetch uncached ones
+  const result: Record<string, { view_count: number; weekly_views: number }> = {};
+  const uncached: string[] = [];
+  for (const s of slugs) {
+    const cached = viewCountCache.get(s);
+    if (cached && cached.expires > Date.now()) {
+      result[s] = cached.data;
+    } else {
+      uncached.push(s);
+    }
+  }
+  if (uncached.length === 0) return result;
+
   try {
     const res = await fetch(`${VIEWS_BASE}/batch`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slugs: slugs.slice(0, 50) }),
+      body: JSON.stringify({ slugs: uncached.slice(0, 50) }),
     });
     const data = await res.json();
-    const map: Record<string, { view_count: number; weekly_views: number }> = {};
     for (const item of (data.data || [])) {
-      map[item.comic_slug] = { view_count: item.view_count, weekly_views: item.weekly_views };
+      const entry = { view_count: item.view_count, weekly_views: item.weekly_views };
+      result[item.comic_slug] = entry;
+      viewCountCache.set(item.comic_slug, { data: entry, expires: Date.now() + 5 * 60 * 1000 });
     }
-    return map;
+    return result;
   } catch {
-    return {};
+    return result;
   }
 }
 
@@ -481,11 +525,18 @@ export async function syncStreak(current_streak: number, longest_streak: number,
   } catch { /* fire-and-forget */ }
 }
 
+let streakLeaderboardCache: { data: any[]; expires: number } | null = null;
+
 export async function getStreakLeaderboard(limit = 20): Promise<any[]> {
+  if (streakLeaderboardCache && streakLeaderboardCache.expires > Date.now()) {
+    return streakLeaderboardCache.data;
+  }
   try {
     const res = await fetch(`${AUTH_BASE}/auth/streak-leaderboard?limit=${limit}`);
     const data = await res.json();
-    return data.data || [];
+    const result = data.data || [];
+    streakLeaderboardCache = { data: result, expires: Date.now() + 5 * 60 * 1000 };
+    return result;
   } catch {
     return [];
   }
