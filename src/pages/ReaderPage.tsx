@@ -63,6 +63,7 @@ export default function ReaderPage() {
   const [navVisible, setNavVisible] = useState(true);
   const lastScrollY = useRef(0);
   const [fetchedChapters, setFetchedChapters] = useState<Chapter[]>([]);
+  const [chaptersLoading, setChaptersLoading] = useState(false);
 
   const stateChapters = routerState?.chapters || [];
   const chapters = stateChapters.length > 0 ? stateChapters : fetchedChapters;
@@ -75,9 +76,10 @@ export default function ReaderPage() {
   // Fetch chapter list from API if not available in state
   useEffect(() => {
     if (stateChapters.length > 0 || !comicSlug) return;
+    setChaptersLoading(true);
     getComicDetail(comicSlug).then((res) => {
       if (res.data?.chapters) setFetchedChapters(res.data.chapters);
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => setChaptersLoading(false));
   }, [comicSlug, stateChapters.length]);
 
   const { prevChapter, nextChapter } = useMemo(() => {
@@ -328,54 +330,40 @@ export default function ReaderPage() {
       {/* Bottom chapter nav */}
       <div
         className={`sticky bottom-0 left-0 right-0 z-50 transition-transform duration-300 ${
-          chapters.length > 0 ? (navVisible ? "translate-y-0" : "translate-y-full") : "translate-y-0"
+          navVisible ? "translate-y-0" : "translate-y-full"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-[#0a0a0f]/95 backdrop-blur-xl border-t border-white/[0.04]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <div className="max-w-4xl mx-auto px-4 py-3">
             <div className="flex items-center gap-2">
-              {chapters.length > 0 ? (
-                <>
-                  <button
-                    onClick={() => prevChapter && goToChapter(prevChapter)}
-                    disabled={!prevChapter}
-                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-body font-medium text-sm transition-all ${
-                      prevChapter
-                        ? "bg-white/[0.04] border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/30"
-                        : "bg-white/[0.02] text-[#3a3a4a] cursor-not-allowed"
-                    }`}
-                  >
-                    <SkipBack size={14} />
-                    <span className="hidden sm:inline">Prev Chapter</span>
-                    <span className="sm:hidden">Prev</span>
-                  </button>
+              <button
+                onClick={() => prevChapter && goToChapter(prevChapter)}
+                disabled={!prevChapter || chaptersLoading}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-body font-medium text-sm transition-all ${
+                  prevChapter
+                    ? "bg-white/[0.04] border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/30"
+                    : "bg-white/[0.02] text-[#3a3a4a] cursor-not-allowed"
+                }`}
+              >
+                <SkipBack size={14} />
+                <span className="hidden sm:inline">Prev</span>
+                <span className="sm:hidden">Prev</span>
+              </button>
 
-                  <button
-                    onClick={() => nextChapter && goToChapter(nextChapter)}
-                    disabled={!nextChapter}
-                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-body font-medium text-sm transition-all ${
-                      nextChapter
-                        ? "bg-[#f97316] text-white hover:bg-[#ea580c]"
-                        : "bg-white/[0.02] text-[#3a3a4a] cursor-not-allowed"
-                    }`}
-                  >
-                    <span className="hidden sm:inline">Next Chapter</span>
-                    <span className="sm:hidden">Next</span>
-                    <SkipForward size={14} />
-                  </button>
-                </>
-              ) : (
-                comicSlug && (
-                  <Link
-                    to={`/komik/${comicSlug}`}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-[#f97316] text-white font-body font-medium text-sm hover:bg-[#ea580c] transition-all"
-                  >
-                    <BookOpen size={14} />
-                    Lihat Semua Chapter
-                  </Link>
-                )
-              )}
+              <button
+                onClick={() => nextChapter && goToChapter(nextChapter)}
+                disabled={!nextChapter || chaptersLoading}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-body font-medium text-sm transition-all ${
+                  nextChapter
+                    ? "bg-[#f97316] text-white hover:bg-[#ea580c]"
+                    : "bg-white/[0.02] text-[#3a3a4a] cursor-not-allowed"
+                }`}
+              >
+                <span className="hidden sm:inline">Next</span>
+                <span className="sm:hidden">Next</span>
+                <SkipForward size={14} />
+              </button>
             </div>
           </div>
         </div>
@@ -383,7 +371,7 @@ export default function ReaderPage() {
 
       {/* Scroll buttons */}
       {viewMode === "long-strip" && (
-        <div className={`fixed right-4 bottom-20 z-[60] flex flex-col gap-2 transition-opacity duration-300 ${
+        <div className={`fixed right-4 bottom-28 z-[60] flex flex-col gap-2 transition-opacity duration-300 ${
           navVisible ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
           onClick={(e) => e.stopPropagation()}
