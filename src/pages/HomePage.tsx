@@ -181,7 +181,7 @@ export default function HomePage() {
   const filteredPop = filterByType(popular, popTab);
 
   return (
-    <div className="page-top pb-20 md:pb-12">
+    <div className="page-top page-bottom md:pb-12">
       {/* Script-only ads: Popunder + Social Bar */}
       <HomeScriptAds />
 

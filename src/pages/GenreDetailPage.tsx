@@ -50,7 +50,7 @@ export default function GenreDetailPage() {
     : comics.filter((c) => c.type?.toLowerCase() === activeType);
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top pb-20 md:pb-12">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top page-bottom md:pb-12">
       <h1 className="font-display text-xl sm:text-2xl text-white/85 mb-5 font-bold flex items-center gap-2.5">
         <LayoutGrid size={22} className="text-[#f97316]" />
         Genre: <span className="text-[#f97316]">{genreName}</span>

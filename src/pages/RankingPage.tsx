@@ -103,7 +103,7 @@ export default function RankingPage() {
     });
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top pb-20 md:pb-12">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top page-bottom md:pb-12">
       {/* Main Tabs: Peringkat vs Streak */}
       <div className="flex items-center gap-2 mb-6">
         <button

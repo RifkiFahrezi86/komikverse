@@ -120,7 +120,7 @@ export default function ComicDetailPage() {
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top pb-20 md:pb-12">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top page-bottom md:pb-12">
       {/* Hero */}
       <div className="relative rounded-xl overflow-hidden mb-6">
         {/* Background blur */}

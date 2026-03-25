@@ -9,3 +9,8 @@
 .page-top {
   padding-top: calc(5rem + env(safe-area-inset-top, 0px));
 }
+
+/* Safe-area-aware bottom padding for pages above fixed bottom nav (mobile) */
+.page-bottom {
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+}

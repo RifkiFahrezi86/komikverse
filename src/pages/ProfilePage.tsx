@@ -52,7 +52,7 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top pb-20 md:pb-12">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top page-bottom md:pb-12">
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
           <div className="w-16 h-16 rounded-full bg-[#f97316]/20 flex items-center justify-center">
             <BookOpen size={28} className="text-[#f97316]" />
@@ -70,7 +70,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top pb-20 md:pb-12">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top page-bottom md:pb-12">
       {/* Profile Header */}
       <div className="rounded-xl bg-gradient-to-br from-[#f97316]/10 to-[#12121a] border border-white/[0.04] p-6 mb-6">
         <div className="flex items-center gap-4">
