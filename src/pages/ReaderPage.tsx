@@ -261,6 +261,19 @@ export default function ReaderPage() {
                   decoding="async"
                   className="w-full block"
                   referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    const img = e.currentTarget;
+                    const attempt = parseInt(img.dataset.retry || "0", 10);
+                    if (attempt < 3) {
+                      img.dataset.retry = String(attempt + 1);
+                      const base = src.split("?")[0];
+                      if (attempt === 2) {
+                        img.src = `https://wsrv.nl/?url=${encodeURIComponent(base)}&default=1`;
+                      } else {
+                        img.src = `${base}?retry=${attempt + 1}&t=${Date.now()}`;
+                      }
+                    }
+                  }}
                 />
                 {/* Ad between images every 10 panels */}
                 {(i + 1) % 10 === 0 && i < panels.length - 1 && (
@@ -286,6 +299,19 @@ export default function ReaderPage() {
               alt={`Panel ${currentPage + 1}`}
               className="max-h-[90vh] max-w-full object-contain"
               referrerPolicy="no-referrer"
+              onError={(e) => {
+                const img = e.currentTarget;
+                const attempt = parseInt(img.dataset.retry || "0", 10);
+                if (attempt < 3) {
+                  img.dataset.retry = String(attempt + 1);
+                  const base = panels[currentPage].split("?")[0];
+                  if (attempt === 2) {
+                    img.src = `https://wsrv.nl/?url=${encodeURIComponent(base)}&default=1`;
+                  } else {
+                    img.src = `${base}?retry=${attempt + 1}&t=${Date.now()}`;
+                  }
+                }
+              }}
             />
 
             <button

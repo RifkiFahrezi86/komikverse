@@ -27,7 +27,7 @@ function extractChapterSlug(href: string): string {
   return href.replace(/^\/(chapter)\//, "").replace(/^\//, "");
 }
 
-const MAX_RETRIES = 2;
+const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
 
 export default function ComicDetailPage() {
@@ -147,7 +147,11 @@ export default function ComicDetailPage() {
                     setTimeout(() => {
                       if (coverImgRef.current && comic.image) {
                         const base = comic.image.split("?")[0];
-                        coverImgRef.current.src = `${base}?retry=${coverRetryCount.current}&t=${Date.now()}`;
+                        if (coverRetryCount.current === MAX_RETRIES) {
+                          coverImgRef.current.src = `https://wsrv.nl/?url=${encodeURIComponent(base)}&default=1`;
+                        } else {
+                          coverImgRef.current.src = `${base}?retry=${coverRetryCount.current}&t=${Date.now()}`;
+                        }
                       }
                     }, RETRY_DELAY * coverRetryCount.current);
                   } else {

@@ -8,7 +8,7 @@ export function extractSlug(href: string): string {
   return href.replace(/^\/(manga|series)\//, "").replace(/^\//, "");
 }
 
-const MAX_RETRIES = 2;
+const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
 
 function useImageRetry(src: string) {
@@ -33,7 +33,12 @@ function useImageRetry(src: string) {
       timerRef.current = setTimeout(() => {
         if (mountedRef.current && imgRef.current) {
           const base = src.split("?")[0];
-          imgRef.current.src = `${base}?retry=${retryCount.current}&t=${Date.now()}`;
+          // Last retry: use wsrv.nl proxy as fallback
+          if (retryCount.current === MAX_RETRIES) {
+            imgRef.current.src = `https://wsrv.nl/?url=${encodeURIComponent(base)}&default=1`;
+          } else {
+            imgRef.current.src = `${base}?retry=${retryCount.current}&t=${Date.now()}`;
+          }
         }
       }, RETRY_DELAY * retryCount.current);
     } else {
