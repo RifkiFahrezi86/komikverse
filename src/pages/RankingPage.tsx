@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Trophy, Eye, Flame, Crown, Star, Gift, ImageOff, BarChart3 } from "lucide-react";
+import { Trophy, Eye, Flame, Crown, Star, Gift, ImageOff, BarChart3, RefreshCw } from "lucide-react";
 import type { Comic } from "../lib/api";
 import { getAllPopular, getStreakLeaderboard, formatViews } from "../lib/api";
 
@@ -81,7 +81,9 @@ export default function RankingPage() {
   const [loadingComics, setLoadingComics] = useState(true);
   const [loadingStreaks, setLoadingStreaks] = useState(true);
 
-  useEffect(() => {
+  const fetchData = () => {
+    setLoadingComics(true);
+    setLoadingStreaks(true);
     getAllPopular().then((comics) => {
       setAllComics(comics);
       setLoadingComics(false);
@@ -90,16 +92,30 @@ export default function RankingPage() {
       setStreakUsers(data);
       setLoadingStreaks(false);
     });
-  }, []);
+  };
+
+  useEffect(() => { fetchData(); }, []);
 
   const filtered = (comicTab === "all" ? allComics : allComics.filter(c => c.type?.toLowerCase() === comicTab))
     .slice()
     .sort((a, b) => {
+      // Composite score: view_count (normalized) + rating bonus
+      // If no view_count, use original order (index) as popularity proxy
+      const va = a.view_count || 0;
+      const vb = b.view_count || 0;
       const ra = parseFloat(String(a.rating || "0")) || 0;
       const rb = parseFloat(String(b.rating || "0")) || 0;
-      if (ra > 0 && rb <= 0) return -1;
-      if (rb > 0 && ra <= 0) return 1;
-      return rb - ra;
+      // If both have views, sort by views first
+      if (va > 0 && vb > 0) {
+        if (vb !== va) return vb - va;
+        return rb - ra;
+      }
+      // If only one has views, prefer it
+      if (va > 0 && vb <= 0) return -1;
+      if (vb > 0 && va <= 0) return 1;
+      // Neither has views — sort by rating, then keep original order
+      if (ra !== rb) return rb - ra;
+      return 0;
     });
 
   return (
@@ -134,11 +150,21 @@ export default function RankingPage() {
       {mainTab === "ranking" && <>
       {/* Header */}
       <div className="mb-6">
-        <h1 className="font-display text-xl sm:text-2xl text-white/85 font-bold flex items-center gap-2.5">
-          <Trophy size={24} className="text-[#f97316]" />
-          Papan Peringkat
-        </h1>
-        <p className="text-xs font-body text-[#8e8ea0] mt-1">Diperbarui setiap minggu</p>
+        <div className="flex items-center justify-between">
+          <h1 className="font-display text-xl sm:text-2xl text-white/85 font-bold flex items-center gap-2.5">
+            <Trophy size={24} className="text-[#f97316]" />
+            Papan Peringkat
+          </h1>
+          <button
+            onClick={fetchData}
+            disabled={loadingComics}
+            className="p-2 rounded-lg bg-[#12121a] border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] hover:border-[#f97316]/30 transition-all disabled:opacity-50"
+            title="Refresh"
+          >
+            <RefreshCw size={16} className={loadingComics ? "animate-spin" : ""} />
+          </button>
+        </div>
+        <p className="text-xs font-body text-[#8e8ea0] mt-1">Berdasarkan popularitas & rating dari semua sumber</p>
       </div>
 
       {/* Type Tabs */}
