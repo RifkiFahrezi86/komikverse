@@ -42,12 +42,10 @@ export default function ProfilePage() {
   useEffect(() => {
     const s = getReadingStats();
     setStats(s);
-    // Sync local streak to server on profile visit
-    if (s.currentStreak > 0 || s.longestStreak > 0) {
-      const today = new Date();
-      const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-      syncStreak(s.currentStreak, s.longestStreak, dateStr);
-    }
+    // Always sync streak to server (including 0 to reset stale streaks)
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    syncStreak(s.currentStreak, s.longestStreak, dateStr);
   }, []);
 
   if (!user) {
@@ -90,9 +88,9 @@ export default function ProfilePage() {
               }`}>
                 {user.role}
               </span>
-              {(Math.max(stats?.currentStreak ?? 0, user.current_streak ?? 0)) > 0 && (
+              {(stats?.currentStreak ?? 0) > 0 && (
                 <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-body font-bold bg-orange-500/15 text-orange-400">
-                  <Flame size={10} /> {Math.max(stats?.currentStreak ?? 0, user.current_streak ?? 0)} hari streak
+                  <Flame size={10} /> {stats?.currentStreak ?? 0} hari streak
                 </span>
               )}
             </div>
@@ -117,7 +115,7 @@ export default function ProfilePage() {
           />
           <StatCard
             icon={<Flame size={20} className="text-orange-400" />}
-            value={Math.max(stats.currentStreak, user.current_streak ?? 0)}
+            value={stats.currentStreak}
             label="Streak Saat Ini"
             color="bg-orange-500/15"
           />
