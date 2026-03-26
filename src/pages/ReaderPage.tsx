@@ -253,7 +253,7 @@ export default function ReaderPage() {
         {viewMode === "long-strip" ? (
           <div className="max-w-3xl mx-auto">
             {/* Ad Slot - Reader Top */}
-            <AdSlot slot="reader-top" className="mb-2" />
+            <AdSlot type="728x90" className="mb-2" />
             {panels.map((src, i) => (
               <React.Fragment key={i}>
                 <img
@@ -279,12 +279,12 @@ export default function ReaderPage() {
                 />
                 {/* Ad between images every 10 panels */}
                 {(i + 1) % 10 === 0 && i < panels.length - 1 && (
-                  <AdSlot slot="reader-between" className="my-2" />
+                  <AdSlot type="468x60" className="my-2" />
                 )}
               </React.Fragment>
             ))}
             {/* Ad Slot - Reader Bottom */}
-            <AdSlot slot="reader-bottom" className="mt-2" />
+            <AdSlot type="468x60" className="mt-2" />
           </div>
         ) : (
           <div className="flex items-center justify-center min-h-screen px-4">
