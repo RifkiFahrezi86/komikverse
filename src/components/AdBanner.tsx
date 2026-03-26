@@ -108,12 +108,12 @@ function queueBannerLoad(
 function CloseBtn({ onClick }: { onClick: () => void }) {
   return (
     <button
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
-      className="absolute -top-2 -right-2 z-10 w-6 h-6 rounded-full bg-black/80 border border-white/20 flex items-center justify-center text-white/80 hover:text-white hover:bg-red-600 transition-all shadow-lg"
+      onClick={(e) => { e.stopPropagation(); e.preventDefault(); onClick(); }}
+      className="absolute top-1 right-1 z-[999] w-8 h-8 sm:w-7 sm:h-7 rounded-full bg-[#1a1a2e] border-2 border-white/40 flex items-center justify-center text-white hover:bg-red-600 hover:border-red-500 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.6)] cursor-pointer"
       title="Tutup iklan"
       aria-label="Tutup iklan"
     >
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
         <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
       </svg>
     </button>
@@ -144,9 +144,9 @@ export function AdBanner({ type, className = "" }: { type: BannerType; className
   if (isAdFree || dismissed) return null;
 
   return (
-    <div className={`ad-slot relative ${className}`}>
+    <div className={`ad-slot relative inline-block ${className}`}>
       <CloseBtn onClick={() => setDismissed(true)} />
-      <div ref={containerRef} className="overflow-hidden flex items-center justify-center" />
+      <div ref={containerRef} className="flex items-center justify-center" />
     </div>
   );
 }
@@ -226,7 +226,7 @@ export function NativeAd({ className = "" }: { className?: string }) {
   return (
     <div className={`ad-slot relative ${className}`}>
       <CloseBtn onClick={() => setDismissed(true)} />
-      <div ref={containerRef} className="overflow-hidden" />
+      <div ref={containerRef} />
     </div>
   );
 }
@@ -295,15 +295,15 @@ export function MobileStickyAd() {
       <div className="bg-[#0a0a0f]/95 backdrop-blur-sm border-t border-white/[0.06] relative">
         <button
           onClick={() => setDismissed(true)}
-          className="absolute -top-3 right-2 z-10 w-6 h-6 rounded-full bg-black/90 border border-white/20 flex items-center justify-center text-white/80 hover:text-white hover:bg-red-600 transition-all shadow-lg"
+          className="absolute -top-4 right-3 z-[999] w-8 h-8 rounded-full bg-[#1a1a2e] border-2 border-white/40 flex items-center justify-center text-white hover:bg-red-600 hover:border-red-500 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.6)] cursor-pointer"
           title="Tutup iklan"
           aria-label="Tutup iklan"
         >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
-        <div ref={containerRef} className="flex justify-center py-1 overflow-hidden" />
+        <div ref={containerRef} className="flex justify-center py-1" />
       </div>
     </div>
   );
