@@ -15,33 +15,63 @@ const NATIVE_AD = {
 };
 
 const INVOKE_DOMAIN = "www.highperformancegate.com";
+const AD_TIMEOUT = 6000; // auto-hide if no ad after 6s
 
-// ─── Banner Loading Queue (prevents atOptions conflicts) ──
-let bannerQueue: Promise<void> = Promise.resolve();
+// Unique counter for container IDs
+let adIdCounter = 0;
 
-function loadBanner(container: HTMLElement, key: string, width: number, height: number): () => void {
+// ─── Banner Loading: async container approach ─────────────
+function loadBanner(
+  container: HTMLElement,
+  key: string,
+  width: number,
+  height: number,
+  onEmpty: () => void,
+): () => void {
   let cancelled = false;
   const elements: HTMLElement[] = [];
 
-  bannerQueue = bannerQueue.then(() => {
-    if (cancelled) return;
-    const inline = document.createElement("script");
-    inline.textContent = `atOptions = { 'key': '${key}', 'format': 'iframe', 'height': ${height}, 'width': ${width}, 'params': {} };`;
-    container.appendChild(inline);
-    elements.push(inline);
+  // Create a named container div so invoke.js knows where to inject
+  const containerId = `atContainer-${key}-${++adIdCounter}`;
+  const adDiv = document.createElement("div");
+  adDiv.id = containerId;
+  container.appendChild(adDiv);
+  elements.push(adDiv);
 
-    return new Promise<void>((resolve) => {
-      const external = document.createElement("script");
-      external.src = `https://${INVOKE_DOMAIN}/${key}/invoke.js`;
-      external.onload = () => resolve();
-      external.onerror = () => resolve();
-      container.appendChild(external);
-      elements.push(external);
-    });
+  // Init global async structures
+  const w = window as any;
+  if (!w.atAsyncContainers || typeof w.atAsyncContainers !== "object") w.atAsyncContainers = {};
+  if (!Array.isArray(w.atAsyncOptions)) w.atAsyncOptions = [];
+
+  // Push options BEFORE loading invoke.js
+  w.atAsyncOptions.push({
+    key,
+    format: "iframe",
+    height,
+    width,
+    params: {},
+    container: containerId,
+    async: true,
   });
+
+  const script = document.createElement("script");
+  script.src = `https://${INVOKE_DOMAIN}/${key}/invoke.js`;
+  script.async = true;
+  script.onerror = () => { if (!cancelled) onEmpty(); };
+  container.appendChild(script);
+  elements.push(script);
+
+  // Auto-hide after timeout if no visible ad content
+  const timer = setTimeout(() => {
+    if (cancelled) return;
+    const hasIframe = container.querySelector("iframe") !== null;
+    const hasImg = container.querySelector("img") !== null;
+    if (!hasIframe && !hasImg) onEmpty();
+  }, AD_TIMEOUT);
 
   return () => {
     cancelled = true;
+    clearTimeout(timer);
     elements.forEach((el) => el.remove());
   };
 }
@@ -49,8 +79,8 @@ function loadBanner(container: HTMLElement, key: string, width: number, height: 
 // Track native banner usage (only 1 allowed globally)
 let nativeBannerActive = false;
 
-function loadNativeBanner(container: HTMLElement): () => void {
-  if (nativeBannerActive) return () => {};
+function loadNativeBanner(container: HTMLElement, onEmpty: () => void): () => void {
+  if (nativeBannerActive) { onEmpty(); return () => {}; }
   nativeBannerActive = true;
 
   const div = document.createElement("div");
@@ -61,9 +91,15 @@ function loadNativeBanner(container: HTMLElement): () => void {
   script.async = true;
   script.setAttribute("data-cfasync", "false");
   script.src = NATIVE_AD.scriptSrc;
+  script.onerror = () => onEmpty();
   container.appendChild(script);
 
+  const timer = setTimeout(() => {
+    if (div.children.length === 0) onEmpty();
+  }, AD_TIMEOUT);
+
   return () => {
+    clearTimeout(timer);
     script.remove();
     div.remove();
     nativeBannerActive = false;
@@ -83,26 +119,32 @@ export default function AdSlot({ type, className = "" }: AdSlotProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const [empty, setEmpty] = useState(false);
 
   useEffect(() => {
     if (isAdFree || dismissed || !containerRef.current) return;
+    let mounted = true;
     const container = containerRef.current;
     container.innerHTML = "";
+    setEmpty(false);
+
+    const markEmpty = () => { if (mounted) setEmpty(true); };
 
     if (type === "native") {
-      cleanupRef.current = loadNativeBanner(container);
+      cleanupRef.current = loadNativeBanner(container, markEmpty);
     } else {
       const ad = BANNER_ADS[type];
-      cleanupRef.current = loadBanner(container, ad.key, ad.width, ad.height);
+      cleanupRef.current = loadBanner(container, ad.key, ad.width, ad.height, markEmpty);
     }
 
     return () => {
+      mounted = false;
       if (cleanupRef.current) cleanupRef.current();
       cleanupRef.current = null;
     };
   }, [type, isAdFree, dismissed]);
 
-  if (isAdFree || dismissed) return null;
+  if (isAdFree || dismissed || empty) return null;
 
   const ad = type !== "native" ? BANNER_ADS[type] : null;
 
@@ -119,7 +161,7 @@ export default function AdSlot({ type, className = "" }: AdSlotProps) {
       <div
         ref={containerRef}
         className="flex items-center justify-center overflow-hidden"
-        style={ad ? { maxWidth: "100%", minHeight: ad.height } : { minHeight: 100 }}
+        style={ad ? { maxWidth: "100%" } : undefined}
       />
     </div>
   );

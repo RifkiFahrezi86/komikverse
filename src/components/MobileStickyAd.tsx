@@ -3,41 +3,63 @@ import { useAuth } from "../lib/auth";
 
 const AD_KEY = "0765c0653cd6aee612fcada9c290485e";
 const INVOKE_DOMAIN = "www.highperformancegate.com";
+const AD_TIMEOUT = 6000;
 
-/**
- * Sticky bottom banner 320x50 — khusus mobile.
- * Bisa ditutup, tidak menghalangi navigasi.
- */
+let stickyIdCounter = 0;
+
 export default function MobileStickyAd() {
   const { isAdFree } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
   const injectedRef = useRef(false);
   const [dismissed, setDismissed] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const [empty, setEmpty] = useState(false);
 
   useEffect(() => {
     if (isAdFree || dismissed || injectedRef.current || !containerRef.current) return;
     injectedRef.current = true;
+    let mounted = true;
 
     const container = containerRef.current;
+    const containerId = `atStickyContainer-${AD_KEY}-${++stickyIdCounter}`;
+    const adDiv = document.createElement("div");
+    adDiv.id = containerId;
+    container.appendChild(adDiv);
 
-    const inline = document.createElement("script");
-    inline.textContent = `atOptions = { 'key': '${AD_KEY}', 'format': 'iframe', 'height': 50, 'width': 320, 'params': {} };`;
-    container.appendChild(inline);
+    const w = window as any;
+    if (!w.atAsyncContainers || typeof w.atAsyncContainers !== "object") w.atAsyncContainers = {};
+    if (!Array.isArray(w.atAsyncOptions)) w.atAsyncOptions = [];
 
-    const external = document.createElement("script");
-    external.src = `https://${INVOKE_DOMAIN}/${AD_KEY}/invoke.js`;
-    external.onload = () => setLoaded(true);
-    external.onerror = () => setLoaded(true);
-    container.appendChild(external);
+    w.atAsyncOptions.push({
+      key: AD_KEY,
+      format: "iframe",
+      height: 50,
+      width: 320,
+      params: {},
+      container: containerId,
+      async: true,
+    });
+
+    const script = document.createElement("script");
+    script.src = `https://${INVOKE_DOMAIN}/${AD_KEY}/invoke.js`;
+    script.async = true;
+    script.onerror = () => { if (mounted) setEmpty(true); };
+    container.appendChild(script);
+
+    const timer = setTimeout(() => {
+      if (mounted && !container.querySelector("iframe")) {
+        setEmpty(true);
+      }
+    }, AD_TIMEOUT);
 
     return () => {
+      mounted = false;
+      clearTimeout(timer);
       container.innerHTML = "";
       injectedRef.current = false;
     };
   }, [isAdFree, dismissed]);
 
-  if (isAdFree || dismissed) return null;
+  if (isAdFree || dismissed || empty) return null;
 
   return (
     <div
