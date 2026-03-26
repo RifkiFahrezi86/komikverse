@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "../lib/auth";
 
 // ────────────────────────────────────────────────
@@ -8,7 +8,6 @@ import { useAuth } from "../lib/auth";
 const isWebView = (() => {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent || "";
-  // Capacitor sets this, plus common WebView indicators
   return (
     /\bwv\b/i.test(ua) ||
     /WebView/i.test(ua) ||
@@ -41,8 +40,6 @@ function ensureAntiRedirectGuard() {
   if (guardActive) return;
   guardActive = true;
 
-  // In WebView, popups are already blocked natively — skip window.open override
-  // to avoid breaking ad script initialization
   if (!isWebView) {
     let popupAllowed = !sessionStorage.getItem("kv_popunder_fired");
     const origOpen = window.open;
@@ -57,7 +54,6 @@ function ensureAntiRedirectGuard() {
     } as typeof window.open;
   }
 
-  // Remove invisible click-jacking overlays
   const observer = new MutationObserver((mutations) => {
     for (const mut of mutations) {
       for (const node of mut.addedNodes) {
@@ -87,6 +83,79 @@ function ensureAntiRedirectGuard() {
 }
 
 // ────────────────────────────────────────────────
+// Ad Content Verification
+// Checks if ad actually rendered content (iframe, img, etc.)
+// If not, hides the slot — prevents floating close buttons
+// ────────────────────────────────────────────────
+
+function useAdContentCheck(
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  active: boolean,
+) {
+  const [hasContent, setHasContent] = useState(false);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    if (!active || !containerRef.current) return;
+
+    const el = containerRef.current;
+    let cancelled = false;
+
+    // Check if the container has meaningful rendered ad content
+    const checkContent = () => {
+      if (cancelled || !el.isConnected) return false;
+      const hasIframe = el.querySelector("iframe") !== null;
+      const hasImg = el.querySelector("img") !== null;
+      const hasCanvas = el.querySelector("canvas") !== null;
+      // Some ad networks inject visible divs with background images
+      const hasVisibleChild = Array.from(el.children).some((child) => {
+        if (child.tagName === "SCRIPT") return false;
+        const rect = child.getBoundingClientRect();
+        return rect.width > 10 && rect.height > 10;
+      });
+      return hasIframe || hasImg || hasCanvas || hasVisibleChild;
+    };
+
+    // Observe mutations to detect when ad content appears
+    const observer = new MutationObserver(() => {
+      if (checkContent()) {
+        setHasContent(true);
+        setChecked(true);
+        observer.disconnect();
+      }
+    });
+    observer.observe(el, { childList: true, subtree: true });
+
+    // Fallback timeout: if no content after 8s, mark as empty
+    const timeout = setTimeout(() => {
+      if (!cancelled) {
+        if (checkContent()) {
+          setHasContent(true);
+        }
+        setChecked(true);
+        observer.disconnect();
+      }
+    }, 8000);
+
+    // Quick check in case content already exists
+    if (checkContent()) {
+      setHasContent(true);
+      setChecked(true);
+      observer.disconnect();
+      clearTimeout(timeout);
+    }
+
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+      clearTimeout(timeout);
+    };
+  }, [active]);
+
+  return { hasContent, checked };
+}
+
+// ────────────────────────────────────────────────
 // Serial Ad Loading Queue
 // Ensures atOptions is correct for each invoke.js
 // ────────────────────────────────────────────────
@@ -96,6 +165,7 @@ let adQueue: Promise<void> = Promise.resolve();
 function queueBannerLoad(
   container: HTMLElement,
   config: { key: string; width: number; height: number },
+  onLoaded?: () => void,
 ): void {
   adQueue = adQueue.then(
     () =>
@@ -110,11 +180,13 @@ function queueBannerLoad(
         };
         const script = document.createElement("script");
         script.type = "text/javascript";
-        // Always use https:// — protocol-relative URLs can fail in WebView
         script.src = `https://www.highperformanceformat.com/${config.key}/invoke.js`;
-        script.onload = () => resolve();
+        script.onload = () => {
+          onLoaded?.();
+          resolve();
+        };
         script.onerror = () => {
-          // Retry once after a short delay (WebView may need more time)
+          // Retry once after a short delay
           if (container.isConnected) {
             setTimeout(() => {
               (window as any).atOptions = {
@@ -127,8 +199,8 @@ function queueBannerLoad(
               const retry = document.createElement("script");
               retry.type = "text/javascript";
               retry.src = `https://www.highperformanceformat.com/${config.key}/invoke.js?t=${Date.now()}`;
-              retry.onload = () => resolve();
-              retry.onerror = () => resolve();
+              retry.onload = () => { onLoaded?.(); resolve(); };
+              retry.onerror = () => { onLoaded?.(); resolve(); };
               container.appendChild(retry);
             }, 2000);
           } else {
@@ -141,7 +213,30 @@ function queueBannerLoad(
 }
 
 // ────────────────────────────────────────────────
-// Close Button
+// Direct iframe fallback for WebView
+// When invoke.js doesn't render, try direct iframe
+// ────────────────────────────────────────────────
+
+function tryDirectIframeFallback(
+  container: HTMLElement,
+  config: { key: string; width: number; height: number },
+) {
+  // Only attempt if container has no iframe yet
+  if (container.querySelector("iframe")) return;
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("data-aa", config.key);
+  iframe.src = `https://www.highperformanceformat.com/watchnew?key=${config.key}&type=banner&height=${config.height}&width=${config.width}`;
+  iframe.width = String(config.width);
+  iframe.height = String(config.height);
+  iframe.style.border = "none";
+  iframe.style.overflow = "hidden";
+  iframe.setAttribute("frameborder", "0");
+  iframe.setAttribute("scrolling", "no");
+  container.appendChild(iframe);
+}
+
+// ────────────────────────────────────────────────
+// Close Button (only rendered when ad has content)
 // ────────────────────────────────────────────────
 
 function CloseBtn({ onClick }: { onClick: () => void }) {
@@ -168,23 +263,39 @@ export function AdBanner({ type, className = "" }: { type: BannerType; className
   const containerRef = useRef<HTMLDivElement>(null);
   const injectedRef = useRef(false);
   const [dismissed, setDismissed] = useState(false);
+  const [scriptLoaded, setScriptLoaded] = useState(false);
+
+  const { hasContent, checked } = useAdContentCheck(containerRef, scriptLoaded);
 
   useEffect(() => {
     if (isAdFree || dismissed || !containerRef.current || injectedRef.current) return;
     injectedRef.current = true;
     ensureAntiRedirectGuard();
-    queueBannerLoad(containerRef.current, AD_CONFIGS[type]);
+    queueBannerLoad(containerRef.current, AD_CONFIGS[type], () => setScriptLoaded(true));
     return () => {
       if (containerRef.current) containerRef.current.innerHTML = "";
       injectedRef.current = false;
     };
   }, [type, isAdFree, dismissed]);
 
+  // WebView fallback: if invoke.js loaded but no content after 4s, try direct iframe
+  useEffect(() => {
+    if (!isWebView || !scriptLoaded || hasContent || !containerRef.current) return;
+    const timer = setTimeout(() => {
+      if (containerRef.current && !containerRef.current.querySelector("iframe")) {
+        tryDirectIframeFallback(containerRef.current, AD_CONFIGS[type]);
+      }
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [scriptLoaded, hasContent, type]);
+
   if (isAdFree || dismissed) return null;
+  // If verification completed and no content → hide entirely (no floating close button)
+  if (checked && !hasContent) return null;
 
   return (
     <div className={`ad-slot relative inline-block ${className}`}>
-      <CloseBtn onClick={() => setDismissed(true)} />
+      {hasContent && <CloseBtn onClick={() => setDismissed(true)} />}
       <div ref={containerRef} className="flex items-center justify-center" />
     </div>
   );
@@ -234,6 +345,9 @@ export function NativeAd({ className = "" }: { className?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const injectedRef = useRef(false);
   const [dismissed, setDismissed] = useState(false);
+  const [scriptLoaded, setScriptLoaded] = useState(false);
+
+  const { hasContent, checked } = useAdContentCheck(containerRef, scriptLoaded);
 
   useEffect(() => {
     if (isAdFree || dismissed || !containerRef.current || injectedRef.current) return;
@@ -252,6 +366,8 @@ export function NativeAd({ className = "" }: { className?: string }) {
     script.async = true;
     script.setAttribute("data-cfasync", "false");
     script.src = "https://pl28923740.profitablecpmratenetwork.com/63f5f4604f3de09027f2c24273fe2d2f/invoke.js";
+    script.onload = () => setScriptLoaded(true);
+    script.onerror = () => setScriptLoaded(true);
     container.appendChild(script);
 
     return () => {
@@ -261,10 +377,11 @@ export function NativeAd({ className = "" }: { className?: string }) {
   }, [isAdFree, dismissed]);
 
   if (isAdFree || dismissed) return null;
+  if (checked && !hasContent) return null;
 
   return (
     <div className={`ad-slot relative ${className}`}>
-      <CloseBtn onClick={() => setDismissed(true)} />
+      {hasContent && <CloseBtn onClick={() => setDismissed(true)} />}
       <div ref={containerRef} />
     </div>
   );
@@ -313,20 +430,35 @@ export function MobileStickyAd() {
   const containerRef = useRef<HTMLDivElement>(null);
   const injectedRef = useRef(false);
   const [dismissed, setDismissed] = useState(false);
+  const [scriptLoaded, setScriptLoaded] = useState(false);
   const tier = useScreenTier();
+
+  const { hasContent, checked } = useAdContentCheck(containerRef, scriptLoaded);
 
   useEffect(() => {
     if (isAdFree || dismissed || tier !== "mobile" || !containerRef.current || injectedRef.current) return;
     injectedRef.current = true;
     ensureAntiRedirectGuard();
-    queueBannerLoad(containerRef.current, AD_CONFIGS["banner-320x50"]);
+    queueBannerLoad(containerRef.current, AD_CONFIGS["banner-320x50"], () => setScriptLoaded(true));
     return () => {
       if (containerRef.current) containerRef.current.innerHTML = "";
       injectedRef.current = false;
     };
   }, [isAdFree, dismissed, tier]);
 
+  // WebView fallback
+  useEffect(() => {
+    if (!isWebView || !scriptLoaded || hasContent || !containerRef.current) return;
+    const timer = setTimeout(() => {
+      if (containerRef.current && !containerRef.current.querySelector("iframe")) {
+        tryDirectIframeFallback(containerRef.current, AD_CONFIGS["banner-320x50"]);
+      }
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [scriptLoaded, hasContent]);
+
   if (isAdFree || dismissed || tier !== "mobile") return null;
+  if (checked && !hasContent) return null;
 
   return (
     <div
@@ -334,16 +466,18 @@ export function MobileStickyAd() {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="bg-[#0a0a0f]/95 backdrop-blur-sm border-t border-white/[0.06] relative">
-        <button
-          onClick={() => setDismissed(true)}
-          className="absolute -top-4 right-3 z-[999] w-8 h-8 rounded-full bg-[#1a1a2e] border-2 border-white/40 flex items-center justify-center text-white hover:bg-red-600 hover:border-red-500 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.6)] cursor-pointer"
-          title="Tutup iklan"
-          aria-label="Tutup iklan"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
+        {hasContent && (
+          <button
+            onClick={() => setDismissed(true)}
+            className="absolute -top-4 right-3 z-[999] w-8 h-8 rounded-full bg-[#1a1a2e] border-2 border-white/40 flex items-center justify-center text-white hover:bg-red-600 hover:border-red-500 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.6)] cursor-pointer"
+            title="Tutup iklan"
+            aria-label="Tutup iklan"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        )}
         <div ref={containerRef} className="flex justify-center py-1" />
       </div>
     </div>
