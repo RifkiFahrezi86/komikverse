@@ -116,41 +116,95 @@ function queueBannerLoad(
 }
 
 // ────────────────────────────────────────────────
-// Iframe Error Cleaner
-// Monitors ad containers and hides iframes that show
-// "Halaman web tidak tersedia" error pages
+// Ad Loaded Detection
+// Returns 'loading' | 'loaded' | 'failed'
+// - Watches container for injected iframes / images
+// - Hides error iframes (chrome-error://, about:blank)
+// - Times out → 'failed' if nothing loads
 // ────────────────────────────────────────────────
 
-function useIframeErrorCleaner(containerRef: React.RefObject<HTMLDivElement | null>) {
+function useAdLoaded(
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  timeoutMs = 8000,
+): "loading" | "loaded" | "failed" {
+  const [status, setStatus] = useState<"loading" | "loaded" | "failed">("loading");
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
-    const observer = new MutationObserver(() => {
-      const iframes = el.querySelectorAll("iframe");
-      iframes.forEach((iframe) => {
-        if (iframe.dataset.kvWatched) return;
-        iframe.dataset.kvWatched = "1";
+    let settled = false;
+    const mark = (s: "loaded" | "failed") => {
+      if (!settled) { settled = true; setStatus(s); }
+    };
 
+    const checkContent = () => {
+      if (settled || !el.isConnected) return;
+
+      // Check for iframes
+      const iframes = el.querySelectorAll("iframe");
+      for (const iframe of iframes) {
+        const src = iframe.src || "";
+        if (src.startsWith("chrome-error://") || src === "about:blank") {
+          iframe.style.display = "none";
+          continue;
+        }
+        if (src.startsWith("http")) { mark("loaded"); return; }
+      }
+
+      // Check for native ad content (images)
+      const imgs = el.querySelectorAll("img");
+      for (const img of imgs) {
+        if (img.src && img.src.startsWith("http")) { mark("loaded"); return; }
+      }
+    };
+
+    const observer = new MutationObserver(() => {
+      // Attach handlers to new iframes
+      el.querySelectorAll("iframe:not([data-kv-w])").forEach((iframe) => {
+        (iframe as HTMLIFrameElement).dataset.kvW = "1";
         iframe.addEventListener("load", () => {
           try {
-            const src = iframe.src || "";
+            const src = (iframe as HTMLIFrameElement).src || "";
             if (src.startsWith("chrome-error://") || src === "about:blank") {
-              iframe.style.display = "none";
+              (iframe as HTMLElement).style.display = "none";
             }
-          } catch (_) { /* cross-origin */ }
+          } catch (_) {}
+          checkContent();
         });
-
         iframe.addEventListener("error", () => {
-          iframe.style.display = "none";
+          (iframe as HTMLElement).style.display = "none";
         });
       });
+      setTimeout(checkContent, 300);
     });
-
     observer.observe(el, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, []);
+
+    const interval = setInterval(checkContent, 1500);
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+      observer.disconnect();
+      mark("failed");
+    }, timeoutMs);
+
+    return () => {
+      observer.disconnect();
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [timeoutMs]);
+
+  return status;
 }
+
+// Invisible-but-rendered style for loading state
+// Container is in the DOM (so ad scripts can inject) but takes no space
+const AD_HIDDEN: React.CSSProperties = {
+  maxHeight: 0,
+  overflow: "hidden",
+  opacity: 0,
+  pointerEvents: "none",
+};
 
 // ────────────────────────────────────────────────
 // Close Button
@@ -172,7 +226,7 @@ function CloseBtn({ onClick }: { onClick: () => void }) {
 }
 
 // ────────────────────────────────────────────────
-// AdBanner — Always renders. Never auto-hides.
+// AdBanner — Only visible when ad content loads
 // ────────────────────────────────────────────────
 
 export function AdBanner({ type, className = "" }: { type: BannerType; className?: string }) {
@@ -180,8 +234,7 @@ export function AdBanner({ type, className = "" }: { type: BannerType; className
   const containerRef = useRef<HTMLDivElement>(null);
   const injectedRef = useRef(false);
   const [dismissed, setDismissed] = useState(false);
-
-  useIframeErrorCleaner(containerRef);
+  const status = useAdLoaded(containerRef);
 
   useEffect(() => {
     if (isAdFree || dismissed || !containerRef.current || injectedRef.current) return;
@@ -194,11 +247,14 @@ export function AdBanner({ type, className = "" }: { type: BannerType; className
     };
   }, [type, isAdFree, dismissed]);
 
-  if (isAdFree || dismissed) return null;
+  if (isAdFree || dismissed || status === "failed") return null;
 
   return (
-    <div className={`ad-slot relative inline-block ${className}`}>
-      <CloseBtn onClick={() => setDismissed(true)} />
+    <div
+      className={`ad-slot relative inline-block ${className}`}
+      style={status === "loading" ? AD_HIDDEN : undefined}
+    >
+      {status === "loaded" && <CloseBtn onClick={() => setDismissed(true)} />}
       <div ref={containerRef} className="flex items-center justify-center" />
     </div>
   );
@@ -248,8 +304,7 @@ export function NativeAd({ className = "" }: { className?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const injectedRef = useRef(false);
   const [dismissed, setDismissed] = useState(false);
-
-  useIframeErrorCleaner(containerRef);
+  const status = useAdLoaded(containerRef, 10000);
 
   useEffect(() => {
     if (isAdFree || dismissed || !containerRef.current || injectedRef.current) return;
@@ -274,11 +329,14 @@ export function NativeAd({ className = "" }: { className?: string }) {
     };
   }, [isAdFree, dismissed]);
 
-  if (isAdFree || dismissed) return null;
+  if (isAdFree || dismissed || status === "failed") return null;
 
   return (
-    <div className={`ad-slot relative ${className}`}>
-      <CloseBtn onClick={() => setDismissed(true)} />
+    <div
+      className={`ad-slot relative ${className}`}
+      style={status === "loading" ? AD_HIDDEN : undefined}
+    >
+      {status === "loaded" && <CloseBtn onClick={() => setDismissed(true)} />}
       <div ref={containerRef} />
     </div>
   );
@@ -325,8 +383,7 @@ export function MobileStickyAd() {
   const injectedRef = useRef(false);
   const [dismissed, setDismissed] = useState(false);
   const tier = useScreenTier();
-
-  useIframeErrorCleaner(containerRef);
+  const status = useAdLoaded(containerRef);
 
   useEffect(() => {
     if (isAdFree || dismissed || tier !== "mobile" || !containerRef.current || injectedRef.current) return;
@@ -339,25 +396,33 @@ export function MobileStickyAd() {
     };
   }, [isAdFree, dismissed, tier]);
 
-  if (isAdFree || dismissed || tier !== "mobile") return null;
+  if (isAdFree || dismissed || tier !== "mobile" || status === "failed") return null;
+
+  const isVisible = status === "loaded";
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-40"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      className={isVisible ? "fixed bottom-0 left-0 right-0 z-40" : ""}
+      style={
+        isVisible
+          ? { paddingBottom: "env(safe-area-inset-bottom)" }
+          : { position: "fixed", left: "-9999px", top: "-9999px", visibility: "hidden" } as React.CSSProperties
+      }
     >
-      <div className="bg-[#0a0a0f]/95 backdrop-blur-sm border-t border-white/[0.06] relative">
-        <button
-          onClick={() => setDismissed(true)}
-          className="absolute -top-4 right-3 z-[999] w-8 h-8 rounded-full bg-[#1a1a2e] border-2 border-white/40 flex items-center justify-center text-white hover:bg-red-600 hover:border-red-500 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.6)] cursor-pointer"
-          title="Tutup iklan"
-          aria-label="Tutup iklan"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-        <div ref={containerRef} className="flex justify-center py-1" />
+      <div className={isVisible ? "bg-[#0a0a0f]/95 backdrop-blur-sm border-t border-white/[0.06] relative" : ""}>
+        {isVisible && (
+          <button
+            onClick={() => setDismissed(true)}
+            className="absolute -top-4 right-3 z-[999] w-8 h-8 rounded-full bg-[#1a1a2e] border-2 border-white/40 flex items-center justify-center text-white hover:bg-red-600 hover:border-red-500 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.6)] cursor-pointer"
+            title="Tutup iklan"
+            aria-label="Tutup iklan"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        )}
+        <div ref={containerRef} className={isVisible ? "flex justify-center py-1" : ""} />
       </div>
     </div>
   );
