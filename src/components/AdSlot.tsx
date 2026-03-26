@@ -16,34 +16,48 @@ const NATIVE_AD = {
 
 const INVOKE_DOMAIN = "www.highperformancegate.com";
 
-// ─── Iframe-Isolated Banner Loading ───────────────────────
-// Each ad loads inside its own iframe document so that
-// window.atOptions is never shared between ads. No queue needed.
+// ─── Serialized Banner Queue ──────────────────────────────
+// Ads load one-at-a-time because invoke.js reads the global
+// window.atOptions. Each ad uses async:true + container ID so
+// invoke.js places the iframe in the correct container div.
+let adQueue: Promise<void> = Promise.resolve();
+
 function loadBanner(container: HTMLElement, key: string, width: number, height: number): () => void {
-  const iframe = document.createElement("iframe");
-  iframe.style.cssText = `max-width:${width}px;width:100%;height:${height}px;border:none;overflow:hidden;display:block;margin:0 auto;`;
-  iframe.scrolling = "no";
-  iframe.setAttribute("frameBorder", "0");
-  container.appendChild(iframe);
+  // Create a unique container div for invoke.js to target
+  const containerId = `at-${key}-${Math.random().toString(36).slice(2, 8)}`;
+  const adDiv = document.createElement("div");
+  adDiv.id = containerId;
+  container.appendChild(adDiv);
 
-  try {
-    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (doc) {
-      doc.open();
-      doc.write(
-        `<!DOCTYPE html><html><head><style>*{margin:0;padding:0}body{overflow:hidden}</style></head>` +
-        `<body>` +
-        `<script>var atOptions={'key':'${key}','format':'iframe','height':${height},'width':${width},'params':{}};<\/script>` +
-        `<script src="https://${INVOKE_DOMAIN}/${key}/invoke.js"><\/script>` +
-        `</body></html>`
-      );
-      doc.close();
-    }
-  } catch {
-    // contentDocument blocked — ads won't load in this environment
-  }
+  let cancelled = false;
 
-  return () => { iframe.remove(); };
+  adQueue = adQueue.then(() => new Promise<void>((resolve) => {
+    if (cancelled) { resolve(); return; }
+
+    // Timeout: if invoke.js doesn't load within 5s, move on
+    const timer = setTimeout(resolve, 5000);
+
+    (window as any).atOptions = {
+      key,
+      format: "iframe",
+      height,
+      width,
+      params: {},
+      container: containerId,
+      async: true,
+    };
+
+    const script = document.createElement("script");
+    script.src = `https://${INVOKE_DOMAIN}/${key}/invoke.js`;
+    script.onload = () => { clearTimeout(timer); setTimeout(resolve, 300); };
+    script.onerror = () => { clearTimeout(timer); resolve(); };
+    container.appendChild(script);
+  }));
+
+  return () => {
+    cancelled = true;
+    adDiv.remove();
+  };
 }
 
 // ─── Native Banner Loading ────────────────────────────────

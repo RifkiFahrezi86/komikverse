@@ -20,29 +20,26 @@ export default function MobileStickyAd() {
 
     const container = containerRef.current;
 
-    // Iframe isolation: load ad in its own document context
-    const iframe = document.createElement("iframe");
-    iframe.style.cssText = "width:320px;height:50px;border:none;overflow:hidden;display:block;margin:0 auto;";
-    iframe.scrolling = "no";
-    iframe.setAttribute("frameBorder", "0");
-    container.appendChild(iframe);
+    // Create unique container div for invoke.js to target
+    const containerId = `at-sticky-${Math.random().toString(36).slice(2, 8)}`;
+    const adDiv = document.createElement("div");
+    adDiv.id = containerId;
+    container.appendChild(adDiv);
 
-    try {
-      const doc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (doc) {
-        doc.open();
-        doc.write(
-          `<!DOCTYPE html><html><head><style>*{margin:0;padding:0}body{overflow:hidden}</style></head>` +
-          `<body>` +
-          `<script>var atOptions={'key':'${AD_KEY}','format':'iframe','height':50,'width':320,'params':{}};<\/script>` +
-          `<script src="https://${INVOKE_DOMAIN}/${AD_KEY}/invoke.js"><\/script>` +
-          `</body></html>`
-        );
-        doc.close();
-      }
-    } catch {
-      // contentDocument blocked
-    }
+    // Set atOptions with async + container so invoke.js places ad in our div
+    (window as any).atOptions = {
+      key: AD_KEY,
+      format: "iframe",
+      height: 50,
+      width: 320,
+      params: {},
+      container: containerId,
+      async: true,
+    };
+
+    const script = document.createElement("script");
+    script.src = `https://${INVOKE_DOMAIN}/${AD_KEY}/invoke.js`;
+    container.appendChild(script);
 
     return () => {
       container.innerHTML = "";
