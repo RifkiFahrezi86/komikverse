@@ -16,43 +16,34 @@ const NATIVE_AD = {
 
 const INVOKE_DOMAIN = "www.highperformancegate.com";
 
-// ─── Serialized Banner Queue ──────────────────────────────
-// Ads MUST load one-at-a-time because invoke.js reads the global
-// window.atOptions variable. If two ads set atOptions simultaneously,
-// one ad gets the wrong config. Queue with 3s timeout per ad ensures
-// the chain never hangs even if a script fails silently.
-let bannerQueue: Promise<void> = Promise.resolve();
-
+// ─── Iframe-Isolated Banner Loading ───────────────────────
+// Each ad loads inside its own iframe document so that
+// window.atOptions is never shared between ads. No queue needed.
 function loadBanner(container: HTMLElement, key: string, width: number, height: number): () => void {
-  let cancelled = false;
-  const elements: HTMLElement[] = [];
+  const iframe = document.createElement("iframe");
+  iframe.style.cssText = `max-width:${width}px;width:100%;height:${height}px;border:none;overflow:hidden;display:block;margin:0 auto;`;
+  iframe.scrolling = "no";
+  iframe.setAttribute("frameBorder", "0");
+  container.appendChild(iframe);
 
-  bannerQueue = bannerQueue.then(() => new Promise<void>((resolve) => {
-    if (cancelled) { resolve(); return; }
+  try {
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (doc) {
+      doc.open();
+      doc.write(
+        `<!DOCTYPE html><html><head><style>*{margin:0;padding:0}body{overflow:hidden}</style></head>` +
+        `<body>` +
+        `<script>var atOptions={'key':'${key}','format':'iframe','height':${height},'width':${width},'params':{}};<\/script>` +
+        `<script src="https://${INVOKE_DOMAIN}/${key}/invoke.js"><\/script>` +
+        `</body></html>`
+      );
+      doc.close();
+    }
+  } catch {
+    // contentDocument blocked — ads won't load in this environment
+  }
 
-    // Timeout: if invoke.js doesn't load/fire within 3s, move on
-    const timer = setTimeout(resolve, 3000);
-
-    (window as any).atOptions = {
-      key,
-      format: "iframe",
-      height,
-      width,
-      params: {},
-    };
-
-    const script = document.createElement("script");
-    script.src = `https://${INVOKE_DOMAIN}/${key}/invoke.js`;
-    script.onload = () => { clearTimeout(timer); setTimeout(resolve, 100); };
-    script.onerror = () => { clearTimeout(timer); resolve(); };
-    container.appendChild(script);
-    elements.push(script);
-  }));
-
-  return () => {
-    cancelled = true;
-    elements.forEach((el) => el.remove());
-  };
+  return () => { iframe.remove(); };
 }
 
 // ─── Native Banner Loading ────────────────────────────────

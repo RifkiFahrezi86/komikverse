@@ -20,13 +20,29 @@ export default function MobileStickyAd() {
 
     const container = containerRef.current;
 
-    const inline = document.createElement("script");
-    inline.textContent = `atOptions = { 'key': '${AD_KEY}', 'format': 'iframe', 'height': 50, 'width': 320, 'params': {} };`;
-    container.appendChild(inline);
+    // Iframe isolation: load ad in its own document context
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "width:320px;height:50px;border:none;overflow:hidden;display:block;margin:0 auto;";
+    iframe.scrolling = "no";
+    iframe.setAttribute("frameBorder", "0");
+    container.appendChild(iframe);
 
-    const external = document.createElement("script");
-    external.src = `https://${INVOKE_DOMAIN}/${AD_KEY}/invoke.js`;
-    container.appendChild(external);
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (doc) {
+        doc.open();
+        doc.write(
+          `<!DOCTYPE html><html><head><style>*{margin:0;padding:0}body{overflow:hidden}</style></head>` +
+          `<body>` +
+          `<script>var atOptions={'key':'${AD_KEY}','format':'iframe','height':50,'width':320,'params':{}};<\/script>` +
+          `<script src="https://${INVOKE_DOMAIN}/${AD_KEY}/invoke.js"><\/script>` +
+          `</body></html>`
+        );
+        doc.close();
+      }
+    } catch {
+      // contentDocument blocked
+    }
 
     return () => {
       container.innerHTML = "";
