@@ -42,8 +42,8 @@ export default function AdSlot({ slot, className = "" }: AdSlotProps) {
     };
   }, [adCode, loaded, isAdFree, dismissed]);
 
-  // Don't render anything if no ad code for this slot
-  if (isAdFree || dismissed || (loaded && !adCode)) return null;
+  // Don't render anything until loaded and ad code exists
+  if (isAdFree || dismissed || !loaded || !adCode) return null;
 
   return (
     <div className={`ad-slot relative ${className}`}>
@@ -58,7 +58,6 @@ export default function AdSlot({ slot, className = "" }: AdSlotProps) {
       <div
         ref={containerRef}
         className="flex items-center justify-center overflow-hidden"
-        style={{ minHeight: loaded ? undefined : 90 }}
       />
     </div>
   );

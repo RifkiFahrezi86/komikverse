@@ -48,7 +48,7 @@ export function injectAdCode(
   iframe.setAttribute("scrolling", "no");
   iframe.setAttribute(
     "sandbox",
-    "allow-scripts allow-popups allow-popups-to-escape-sandbox"
+    "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
   );
 
   container.appendChild(iframe);
@@ -63,38 +63,17 @@ export function injectAdCode(
   img,iframe{max-width:100%!important;height:auto!important}
 </style>
 <script>
-  // Auto-resize iframe height to fit content
   function notifyHeight(){
     var h=document.body.scrollHeight||document.documentElement.scrollHeight;
-    if(h>0)parent.postMessage({type:'adHeight',height:h},'*');
+    if(h>0)window.parent.postMessage({type:'adHeight',height:h},'*');
   }
-  window.addEventListener('load',function(){setTimeout(notifyHeight,200);setTimeout(notifyHeight,1000);setTimeout(notifyHeight,3000)});
-  new MutationObserver(function(){setTimeout(notifyHeight,100)}).observe(document.body,{childList:true,subtree:true,attributes:true});
+  window.addEventListener('load',function(){setTimeout(notifyHeight,300);setTimeout(notifyHeight,1500);setTimeout(notifyHeight,4000)});
+  new MutationObserver(function(){setTimeout(notifyHeight,150)}).observe(document.documentElement,{childList:true,subtree:true,attributes:true});
 </script>
 </head><body>${adCode}</body></html>`;
 
-  // Write content after iframe is in DOM
-  const writeContent = () => {
-    try {
-      const doc = iframe.contentDocument;
-      if (doc) {
-        doc.open();
-        doc.write(html);
-        doc.close();
-      }
-    } catch {
-      // Fallback: use srcdoc
-      iframe.srcdoc = html;
-    }
-  };
-
-  if (iframe.contentDocument?.readyState === "complete") {
-    writeContent();
-  } else {
-    iframe.addEventListener("load", writeContent, { once: true });
-    // Trigger load by setting a blank src
-    iframe.src = "about:blank";
-  }
+  // Write content via srcdoc for reliable cross-origin iframe loading
+  iframe.srcdoc = html;
 
   // Listen for height resize messages from the iframe
   const onMessage = (e: MessageEvent) => {

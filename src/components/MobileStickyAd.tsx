@@ -31,12 +31,12 @@ export default function MobileStickyAd() {
     };
   }, [adCode, loaded, isAdFree, dismissed]);
 
-  if (isAdFree || dismissed || (loaded && !adCode)) return null;
+  if (isAdFree || dismissed || !loaded || !adCode) return null;
 
   return (
     <div
       className="fixed left-0 right-0 z-40 md:hidden flex flex-col items-center"
-      style={{ bottom: "3.5rem", paddingBottom: "0px" }}
+      style={{ bottom: "3.5rem" }}
     >
       <div className="relative bg-[#0e0e16]/95 backdrop-blur-sm border-t border-b border-white/[0.06] w-full flex justify-center py-1">
         <button
