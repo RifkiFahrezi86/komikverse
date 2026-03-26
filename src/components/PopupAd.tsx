@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 import { useAuth } from "../lib/auth";
 import { useLocation } from "react-router-dom";
 
+const isCapacitor = typeof (window as any).Capacitor !== "undefined" || /wv|WebView/i.test(navigator.userAgent);
+
 const POPUNDER_SRC = "https://pl28923689.profitablecpmratenetwork.com/5a/5e/18/5a5e18adc44d72973fdb14f945055f50.js";
 const SESSION_KEY = "kv_popunder_shown";
 const DELAY_MS = 30000; // 30 detik setelah halaman dimuat
@@ -16,7 +18,7 @@ export default function PopunderAd() {
   const location = useLocation();
 
   useEffect(() => {
-    if (isAdFree || injectedRef.current) return;
+    if (isAdFree || injectedRef.current || isCapacitor) return;
     if (sessionStorage.getItem(SESSION_KEY)) return;
 
     // Jangan tampilkan saat membaca komik

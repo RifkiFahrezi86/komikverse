@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../lib/auth";
 
+// Kapasitor/WebView detection — Adsterra blocked in WebView
+const isCapacitor = typeof (window as any).Capacitor !== "undefined" || /wv|WebView/i.test(navigator.userAgent);
+
 // ─── Hardcoded Ad Configuration (Adsterra) ────────────────
 const BANNER_ADS = {
   "728x90": { key: "5c01a1d15d1a70394faba93bab910d76", width: 728, height: 90 },
@@ -15,63 +18,84 @@ const NATIVE_AD = {
 };
 
 const INVOKE_DOMAIN = "www.highperformancegate.com";
-const AD_TIMEOUT = 6000; // auto-hide if no ad after 6s
 
-// Unique counter for container IDs
-let adIdCounter = 0;
+// ─── Anti-Redirect Guard ──────────────────────────────────
+function startAntiRedirectGuard(): () => void {
+  const cleanups: (() => void)[] = [];
 
-// ─── Banner Loading: async container approach ─────────────
-function loadBanner(
-  container: HTMLElement,
-  key: string,
-  width: number,
-  height: number,
-  onEmpty: () => void,
-): () => void {
+  const origOpen = window.open;
+  window.open = function () { return null; } as typeof window.open;
+  cleanups.push(() => { window.open = origOpen; });
+
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (!(node instanceof HTMLElement)) continue;
+        if (node.closest(".ad-slot")) continue;
+        const style = node.style;
+        const isFullOverlay =
+          node.tagName === "DIV" &&
+          (style.position === "fixed" || style.position === "absolute") &&
+          (style.zIndex && parseInt(style.zIndex) > 900) &&
+          (style.opacity === "0" || style.opacity === "" || parseFloat(style.opacity || "1") < 0.05) &&
+          !node.id?.includes("container-");
+        if (isFullOverlay) { node.remove(); continue; }
+        if (node.tagName === "A" && (style.position === "fixed" || style.position === "absolute")) {
+          const rect = node.getBoundingClientRect();
+          if (rect.width > window.innerWidth * 0.5 || rect.height > window.innerHeight * 0.5) node.remove();
+        }
+      }
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  cleanups.push(() => observer.disconnect());
+
+  const origAddEvent = document.body.addEventListener;
+  document.body.addEventListener = function (
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions
+  ) {
+    if (type === "click" || type === "mousedown" || type === "touchstart" || type === "pointerdown") return;
+    return origAddEvent.call(document.body, type, listener, options as any);
+  } as typeof document.body.addEventListener;
+  cleanups.push(() => { document.body.addEventListener = origAddEvent; });
+
+  return () => { cleanups.forEach((fn) => fn()); };
+}
+
+let guardCleanup: (() => void) | null = null;
+function ensureAntiRedirectGuard() {
+  if (!guardCleanup) guardCleanup = startAntiRedirectGuard();
+}
+
+// ─── Banner Loading Queue (prevents atOptions conflicts) ──
+let bannerQueue: Promise<void> = Promise.resolve();
+
+function loadBanner(container: HTMLElement, key: string, width: number, height: number): () => void {
+  ensureAntiRedirectGuard();
   let cancelled = false;
   const elements: HTMLElement[] = [];
 
-  // Create a named container div so invoke.js knows where to inject
-  const containerId = `atContainer-${key}-${++adIdCounter}`;
-  const adDiv = document.createElement("div");
-  adDiv.id = containerId;
-  container.appendChild(adDiv);
-  elements.push(adDiv);
-
-  // Init global async structures
-  const w = window as any;
-  if (!w.atAsyncContainers || typeof w.atAsyncContainers !== "object") w.atAsyncContainers = {};
-  if (!Array.isArray(w.atAsyncOptions)) w.atAsyncOptions = [];
-
-  // Push options BEFORE loading invoke.js
-  w.atAsyncOptions.push({
-    key,
-    format: "iframe",
-    height,
-    width,
-    params: {},
-    container: containerId,
-    async: true,
-  });
-
-  const script = document.createElement("script");
-  script.src = `https://${INVOKE_DOMAIN}/${key}/invoke.js`;
-  script.async = true;
-  script.onerror = () => { if (!cancelled) onEmpty(); };
-  container.appendChild(script);
-  elements.push(script);
-
-  // Auto-hide after timeout if no visible ad content
-  const timer = setTimeout(() => {
+  bannerQueue = bannerQueue.then(() => {
     if (cancelled) return;
-    const hasIframe = container.querySelector("iframe") !== null;
-    const hasImg = container.querySelector("img") !== null;
-    if (!hasIframe && !hasImg) onEmpty();
-  }, AD_TIMEOUT);
+    const inline = document.createElement("script");
+    inline.textContent = `atOptions = { 'key': '${key}', 'format': 'iframe', 'height': ${height}, 'width': ${width}, 'params': {} };`;
+    container.appendChild(inline);
+    elements.push(inline);
+
+    return new Promise<void>((resolve) => {
+      const external = document.createElement("script");
+      external.src = `https://${INVOKE_DOMAIN}/${key}/invoke.js`;
+      external.onload = () => resolve();
+      external.onerror = () => resolve();
+      container.appendChild(external);
+      elements.push(external);
+    });
+  });
 
   return () => {
     cancelled = true;
-    clearTimeout(timer);
     elements.forEach((el) => el.remove());
   };
 }
@@ -79,8 +103,9 @@ function loadBanner(
 // Track native banner usage (only 1 allowed globally)
 let nativeBannerActive = false;
 
-function loadNativeBanner(container: HTMLElement, onEmpty: () => void): () => void {
-  if (nativeBannerActive) { onEmpty(); return () => {}; }
+function loadNativeBanner(container: HTMLElement): () => void {
+  ensureAntiRedirectGuard();
+  if (nativeBannerActive) return () => {};
   nativeBannerActive = true;
 
   const div = document.createElement("div");
@@ -91,15 +116,9 @@ function loadNativeBanner(container: HTMLElement, onEmpty: () => void): () => vo
   script.async = true;
   script.setAttribute("data-cfasync", "false");
   script.src = NATIVE_AD.scriptSrc;
-  script.onerror = () => onEmpty();
   container.appendChild(script);
 
-  const timer = setTimeout(() => {
-    if (div.children.length === 0) onEmpty();
-  }, AD_TIMEOUT);
-
   return () => {
-    clearTimeout(timer);
     script.remove();
     div.remove();
     nativeBannerActive = false;
@@ -119,32 +138,26 @@ export default function AdSlot({ type, className = "" }: AdSlotProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
   const [dismissed, setDismissed] = useState(false);
-  const [empty, setEmpty] = useState(false);
 
   useEffect(() => {
-    if (isAdFree || dismissed || !containerRef.current) return;
-    let mounted = true;
+    if (isAdFree || dismissed || isCapacitor || !containerRef.current) return;
     const container = containerRef.current;
     container.innerHTML = "";
-    setEmpty(false);
-
-    const markEmpty = () => { if (mounted) setEmpty(true); };
 
     if (type === "native") {
-      cleanupRef.current = loadNativeBanner(container, markEmpty);
+      cleanupRef.current = loadNativeBanner(container);
     } else {
       const ad = BANNER_ADS[type];
-      cleanupRef.current = loadBanner(container, ad.key, ad.width, ad.height, markEmpty);
+      cleanupRef.current = loadBanner(container, ad.key, ad.width, ad.height);
     }
 
     return () => {
-      mounted = false;
       if (cleanupRef.current) cleanupRef.current();
       cleanupRef.current = null;
     };
   }, [type, isAdFree, dismissed]);
 
-  if (isAdFree || dismissed || empty) return null;
+  if (isAdFree || dismissed || isCapacitor) return null;
 
   const ad = type !== "native" ? BANNER_ADS[type] : null;
 
@@ -161,7 +174,7 @@ export default function AdSlot({ type, className = "" }: AdSlotProps) {
       <div
         ref={containerRef}
         className="flex items-center justify-center overflow-hidden"
-        style={ad ? { maxWidth: "100%" } : undefined}
+        style={ad ? { maxWidth: "100%", minHeight: ad.height } : { minHeight: 100 }}
       />
     </div>
   );
