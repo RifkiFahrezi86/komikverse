@@ -1,57 +1,40 @@
-import { useEffect, useState, useRef } from "react";
-import { X } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { useAuth } from "../lib/auth";
-import { fetchAds, injectAdCode } from "./AdSlot";
+import { useLocation } from "react-router-dom";
+
+const POPUNDER_SRC = "https://pl28923689.profitablecpmratenetwork.com/5a/5e/18/5a5e18adc44d72973fdb14f945055f50.js";
+const SESSION_KEY = "kv_popunder_shown";
+const DELAY_MS = 30000; // 30 detik setelah halaman dimuat
 
 /**
- * Inline banner ad for the "popup-global" slot.
- * Displayed below navbar, above content. Dismiss once per session.
+ * Popunder ad — muncul 1x per sesi, delay 30 detik, tidak saat membaca komik.
+ * Tidak merender apapun ke layar (script-only).
  */
-export default function PopupAd() {
-  const { isAdFree, loading } = useAuth();
-  const [visible, setVisible] = useState(false);
-  const [code, setCode] = useState("");
-  const adRef = useRef<HTMLDivElement>(null);
+export default function PopunderAd() {
+  const { isAdFree } = useAuth();
   const injectedRef = useRef(false);
+  const location = useLocation();
 
   useEffect(() => {
-    if (loading || isAdFree) return;
-    if (sessionStorage.getItem("kv_popup_closed")) return;
-    fetchAds().then((ads) => {
-      const c = ads["popup-global"];
-      if (!c) return;
-      if (!c.includes("atOptions") && !c.includes("container-") && !c.includes("<div")) return;
-      setCode(c);
-      setVisible(true);
-    });
-  }, [isAdFree, loading]);
+    if (isAdFree || injectedRef.current) return;
+    if (sessionStorage.getItem(SESSION_KEY)) return;
 
-  useEffect(() => {
-    if (!visible || !code || !adRef.current || injectedRef.current) return;
-    injectedRef.current = true;
-    const cleanup = injectAdCode(adRef.current, code);
-    return () => { if (cleanup) cleanup(); };
-  }, [visible, code]);
+    // Jangan tampilkan saat membaca komik
+    if (location.pathname.startsWith("/baca/")) return;
 
-  const close = () => {
-    setVisible(false);
-    sessionStorage.setItem("kv_popup_closed", "1");
-  };
+    const timer = setTimeout(() => {
+      if (injectedRef.current) return;
+      injectedRef.current = true;
+      sessionStorage.setItem(SESSION_KEY, "1");
 
-  if (!visible || !code || isAdFree) return null;
+      const script = document.createElement("script");
+      script.src = POPUNDER_SRC;
+      script.async = true;
+      document.body.appendChild(script);
+    }, DELAY_MS);
 
-  return (
-    <div className="w-full bg-[#16161f] border-b border-white/[0.06] relative">
-      <div className="max-w-5xl mx-auto px-2 py-1.5 flex items-center gap-2">
-        <div ref={adRef} className="flex-1 flex items-center justify-center overflow-hidden isolate" />
-        <button
-          onClick={close}
-          className="shrink-0 w-8 h-8 rounded-full bg-white/[0.08] border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-red-600 transition-colors relative z-10"
-          title="Tutup iklan"
-        >
-          <X size={16} />
-        </button>
-      </div>
-    </div>
-  );
+    return () => clearTimeout(timer);
+  }, [isAdFree, location.pathname]);
+
+  return null;
 }

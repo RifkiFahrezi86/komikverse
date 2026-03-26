@@ -7,15 +7,11 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     url: 'https://komikverse-swart.vercel.app',
-    // Allow ALL domains so ad iframes can load from any CDN/redirect domain.
-    // Adsterra ads redirect through many domains — whitelisting them all is impractical.
-    allowNavigation: ['*']
+    allowNavigation: ['komikverse-swart.vercel.app', 'komikverse-api-amber.vercel.app']
   },
   android: {
     backgroundColor: '#0d0d14',
-    allowMixedContent: true,
-    webContentsDebuggingEnabled: false
-    // UA modification is done in MainActivity.java (dynamic strip, not static override)
+    allowMixedContent: true
   }
 };
 

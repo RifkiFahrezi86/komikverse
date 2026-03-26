@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   MessageSquare,
+  Megaphone,
   Users,
   Settings,
   ChevronLeft,
@@ -17,6 +18,7 @@ import { useAuth } from "../lib/auth";
 const NAV_ITEMS = [
   { to: "/admin", icon: LayoutDashboard, label: "Dashboard", end: true },
   { to: "/admin/comments", icon: MessageSquare, label: "Komentar" },
+  { to: "/admin/ads", icon: Megaphone, label: "Iklan / Ads" },
   { to: "/admin/users", icon: Users, label: "Pengguna" },
   { to: "/admin/settings", icon: Settings, label: "Pengaturan" },
 ];

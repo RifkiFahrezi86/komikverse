@@ -5,7 +5,7 @@ import type { Comic } from "../lib/api";
 import { searchComics } from "../lib/api";
 import ComicCard from "../components/ComicCard";
 import ComicCardSkeleton from "../components/ComicCardSkeleton";
-import { AdBanner } from "../components/AdBanner";
+import AdSlot from "../components/AdSlot";
 
 const TYPES = [
   { key: "all", label: "Semua" },
@@ -101,7 +101,7 @@ export default function SearchPage() {
         </div>
       )}
 
-      <AdBanner type="banner-468x60" className="mt-6 flex justify-center rounded-xl overflow-hidden" />
+      <AdSlot type="468x60" className="mt-6 rounded-xl overflow-hidden" />
     </div>
   );
 }
