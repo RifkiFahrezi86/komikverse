@@ -188,7 +188,7 @@ export default function HomePage() {
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
 
         {/* Banner 728x90 - Atas Homepage */}
-        <AdSlot type="728x90" className="mb-6 rounded-xl overflow-hidden" />
+        <AdSlot slot="home-top" className="mb-6 rounded-xl overflow-hidden" />
 
         {enrichFailed && (
           <div className="mb-4 px-3 py-2 rounded-lg bg-yellow-500/5 border border-yellow-500/10 text-[11px] font-body text-yellow-400/80 text-center">
@@ -262,7 +262,7 @@ export default function HomePage() {
         )}
 
         {/* ─── Native Banner (menyatu dengan konten) ─── */}
-        <AdSlot type="native" className="mb-10" />
+        <AdSlot slot="native-home" className="mb-10" />
 
         {/* ─── Rekomendasi Section ─── */}
         <section className="mb-10">
@@ -356,7 +356,7 @@ export default function HomePage() {
         </section>
 
         {/* ─── Populer Section ─── */}
-        <AdSlot type="468x60" className="mb-6 rounded-xl overflow-hidden" />
+        <AdSlot slot="home-mid" className="mb-6 rounded-xl overflow-hidden" />
         <section className="mb-10">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
             <h2 className="font-display text-lg sm:text-xl text-white/85 flex items-center gap-2.5 font-bold">
@@ -392,7 +392,7 @@ export default function HomePage() {
           )}
         </section>
 
-        <AdSlot type="300x250" className="mb-6 rounded-xl overflow-hidden" />
+        <AdSlot slot="home-bottom" className="mb-6 rounded-xl overflow-hidden" />
       </div>
     </div>
   );

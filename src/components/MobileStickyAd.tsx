@@ -1,53 +1,69 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../lib/auth";
 
-const AD_KEY = "0765c0653cd6aee612fcada9c290485e";
-const INVOKE_DOMAIN = "www.highperformancegate.com";
+const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9rb21pa3ZlcnNlLWFwaS1hbWJlci52ZXJjZWwuYXBwL2FwaQ==");
 
 /**
- * Sticky bottom banner 320x50 — khusus mobile.
- * Bisa ditutup, tidak menghalangi navigasi.
+ * Sticky bottom banner — khusus mobile.
+ * Mengambil ad_code dari slot "sticky-mobile" di database.
  */
 export default function MobileStickyAd() {
   const { isAdFree } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
   const injectedRef = useRef(false);
   const [dismissed, setDismissed] = useState(false);
+  const [adCode, setAdCode] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isAdFree || dismissed || injectedRef.current || !containerRef.current) return;
+    if (isAdFree || dismissed) return;
+    fetch(`${API_BASE}/ads`)
+      .then((r) => r.json())
+      .then((d) => {
+        const ads = d.ads || {};
+        setAdCode(ads["sticky-mobile"] || "");
+      })
+      .catch(() => setAdCode(""));
+  }, [isAdFree, dismissed]);
+
+  useEffect(() => {
+    if (!adCode || !containerRef.current || injectedRef.current) return;
     injectedRef.current = true;
-
     const container = containerRef.current;
+    container.innerHTML = "";
 
-    // Create unique container div for invoke.js to target
-    const containerId = `at-sticky-${Math.random().toString(36).slice(2, 8)}`;
-    const adDiv = document.createElement("div");
-    adDiv.id = containerId;
-    container.appendChild(adDiv);
+    const temp = document.createElement("div");
+    temp.innerHTML = adCode;
+    const scripts = temp.querySelectorAll("script");
+    const nonScript = adCode.replace(/<script[\s\S]*?<\/script>/gi, "");
 
-    // Set atOptions with async + container so invoke.js places ad in our div
-    (window as any).atOptions = {
-      key: AD_KEY,
-      format: "iframe",
-      height: 50,
-      width: 320,
-      params: {},
-      container: containerId,
-      async: true,
-    };
+    if (nonScript.trim()) {
+      const wrapper = document.createElement("div");
+      wrapper.innerHTML = nonScript;
+      container.appendChild(wrapper);
+    }
 
-    const script = document.createElement("script");
-    script.src = `https://${INVOKE_DOMAIN}/${AD_KEY}/invoke.js`;
-    container.appendChild(script);
+    scripts.forEach((origScript) => {
+      const script = document.createElement("script");
+      if (origScript.src) {
+        script.src = origScript.src;
+        script.async = true;
+      } else {
+        script.textContent = origScript.textContent;
+      }
+      Array.from(origScript.attributes).forEach((attr) => {
+        if (attr.name !== "src") script.setAttribute(attr.name, attr.value);
+      });
+      container.appendChild(script);
+    });
 
     return () => {
       container.innerHTML = "";
       injectedRef.current = false;
     };
-  }, [isAdFree, dismissed]);
+  }, [adCode]);
 
   if (isAdFree || dismissed) return null;
+  if (!adCode) return null;
 
   return (
     <div

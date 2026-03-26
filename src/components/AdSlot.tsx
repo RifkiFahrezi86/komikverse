@@ -1,128 +1,98 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../lib/auth";
 
-// ─── Hardcoded Ad Configuration (Adsterra) ────────────────
-const BANNER_ADS = {
-  "728x90": { key: "5c01a1d15d1a70394faba93bab910d76", width: 728, height: 90 },
-  "300x250": { key: "6b4a8f2d650a7e5ad65b05a797c81b41", width: 300, height: 250 },
-  "468x60": { key: "14a131e28a7f22c03914636316840b63", width: 468, height: 60 },
-  "320x50": { key: "0765c0653cd6aee612fcada9c290485e", width: 320, height: 50 },
-} as const;
+const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9rb21pa3ZlcnNlLWFwaS1hbWJlci52ZXJjZWwuYXBwL2FwaQ==");
 
-const NATIVE_AD = {
-  scriptSrc: "https://pl28923740.profitablecpmratenetwork.com/63f5f4604f3de09027f2c24273fe2d2f/invoke.js",
-  containerId: "container-63f5f4604f3de09027f2c24273fe2d2f",
-};
+// ─── Ad Cache ─────────────────────────────────────────────
+// Fetched once from API, cached in memory for the session
+let adCache: Record<string, string> | null = null;
+let adCachePromise: Promise<Record<string, string>> | null = null;
 
-const INVOKE_DOMAIN = "www.highperformancegate.com";
-
-// ─── Serialized Banner Queue ──────────────────────────────
-// Ads load one-at-a-time because invoke.js reads the global
-// window.atOptions. Each ad uses async:true + container ID so
-// invoke.js places the iframe in the correct container div.
-let adQueue: Promise<void> = Promise.resolve();
-
-function loadBanner(container: HTMLElement, key: string, width: number, height: number): () => void {
-  // Create a unique container div for invoke.js to target
-  const containerId = `at-${key}-${Math.random().toString(36).slice(2, 8)}`;
-  const adDiv = document.createElement("div");
-  adDiv.id = containerId;
-  container.appendChild(adDiv);
-
-  let cancelled = false;
-
-  adQueue = adQueue.then(() => new Promise<void>((resolve) => {
-    if (cancelled) { resolve(); return; }
-
-    // Timeout: if invoke.js doesn't load within 5s, move on
-    const timer = setTimeout(resolve, 5000);
-
-    (window as any).atOptions = {
-      key,
-      format: "iframe",
-      height,
-      width,
-      params: {},
-      container: containerId,
-      async: true,
-    };
-
-    const script = document.createElement("script");
-    script.src = `https://${INVOKE_DOMAIN}/${key}/invoke.js`;
-    script.onload = () => { clearTimeout(timer); setTimeout(resolve, 300); };
-    script.onerror = () => { clearTimeout(timer); resolve(); };
-    container.appendChild(script);
-  }));
-
-  return () => {
-    cancelled = true;
-    adDiv.remove();
-  };
+function fetchAds(): Promise<Record<string, string>> {
+  if (adCache) return Promise.resolve(adCache);
+  if (adCachePromise) return adCachePromise;
+  adCachePromise = fetch(`${API_BASE}/ads`)
+    .then((r) => r.json())
+    .then((d) => {
+      adCache = d.ads || {};
+      return adCache!;
+    })
+    .catch(() => {
+      adCache = {};
+      return adCache!;
+    })
+    .finally(() => { adCachePromise = null; });
+  return adCachePromise;
 }
 
-// ─── Native Banner Loading ────────────────────────────────
-let nativeBannerActive = false;
-
-function loadNativeBanner(container: HTMLElement): () => void {
-  if (nativeBannerActive) return () => {};
-  nativeBannerActive = true;
-
-  // Remove any old container with same ID to avoid conflicts
-  const old = document.getElementById(NATIVE_AD.containerId);
-  if (old) old.remove();
-
-  const div = document.createElement("div");
-  div.id = NATIVE_AD.containerId;
-  container.appendChild(div);
-
-  const script = document.createElement("script");
-  script.async = true;
-  script.setAttribute("data-cfasync", "false");
-  script.src = NATIVE_AD.scriptSrc;
-  container.appendChild(script);
-
-  return () => {
-    script.remove();
-    div.remove();
-    nativeBannerActive = false;
-  };
+// Force refresh from API (called after admin updates)
+export function invalidateAdCache() {
+  adCache = null;
+  adCachePromise = null;
 }
 
 // ─── AdSlot Component ─────────────────────────────────────
-export type BannerSize = keyof typeof BANNER_ADS;
-
 interface AdSlotProps {
-  type: BannerSize | "native";
+  slot: string;
   className?: string;
 }
 
-export default function AdSlot({ type, className = "" }: AdSlotProps) {
+export default function AdSlot({ slot, className = "" }: AdSlotProps) {
   const { isAdFree } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
-  const cleanupRef = useRef<(() => void) | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const [adCode, setAdCode] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isAdFree || dismissed || !containerRef.current) return;
+    if (isAdFree || dismissed) return;
+    let cancelled = false;
+    fetchAds().then((ads) => {
+      if (!cancelled) setAdCode(ads[slot] || "");
+    });
+    return () => { cancelled = true; };
+  }, [slot, isAdFree, dismissed]);
+
+  useEffect(() => {
+    if (!adCode || !containerRef.current) return;
     const container = containerRef.current;
     container.innerHTML = "";
 
-    if (type === "native") {
-      cleanupRef.current = loadNativeBanner(container);
-    } else {
-      const ad = BANNER_ADS[type];
-      cleanupRef.current = loadBanner(container, ad.key, ad.width, ad.height);
+    // Parse ad code and inject scripts properly
+    const temp = document.createElement("div");
+    temp.innerHTML = adCode;
+
+    // Extract and execute scripts
+    const scripts = temp.querySelectorAll("script");
+    const nonScriptContent = adCode.replace(/<script[\s\S]*?<\/script>/gi, "");
+
+    if (nonScriptContent.trim()) {
+      const wrapper = document.createElement("div");
+      wrapper.innerHTML = nonScriptContent;
+      container.appendChild(wrapper);
     }
 
-    return () => {
-      if (cleanupRef.current) cleanupRef.current();
-      cleanupRef.current = null;
-    };
-  }, [type, isAdFree, dismissed]);
+    scripts.forEach((origScript) => {
+      const script = document.createElement("script");
+      if (origScript.src) {
+        script.src = origScript.src;
+        script.async = true;
+      } else {
+        script.textContent = origScript.textContent;
+      }
+      // Copy attributes
+      Array.from(origScript.attributes).forEach((attr) => {
+        if (attr.name !== "src") script.setAttribute(attr.name, attr.value);
+      });
+      container.appendChild(script);
+    });
+
+    return () => { container.innerHTML = ""; };
+  }, [adCode]);
 
   if (isAdFree || dismissed) return null;
-
-  const ad = type !== "native" ? BANNER_ADS[type] : null;
+  // Don't render if no ad code loaded yet or empty
+  if (adCode === null) return null;
+  if (adCode === "") return null;
 
   return (
     <div className={`ad-slot relative ${className}`}>
@@ -137,7 +107,7 @@ export default function AdSlot({ type, className = "" }: AdSlotProps) {
       <div
         ref={containerRef}
         className="flex items-center justify-center overflow-hidden"
-        style={ad ? { maxWidth: "100%", minHeight: ad.height } : { minHeight: 100 }}
+        style={{ minHeight: 50 }}
       />
     </div>
   );

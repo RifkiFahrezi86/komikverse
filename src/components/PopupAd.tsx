@@ -2,13 +2,13 @@ import { useEffect, useRef } from "react";
 import { useAuth } from "../lib/auth";
 import { useLocation } from "react-router-dom";
 
-const POPUNDER_SRC = "https://pl28923689.profitablecpmratenetwork.com/5a/5e/18/5a5e18adc44d72973fdb14f945055f50.js";
+const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9rb21pa3ZlcnNlLWFwaS1hbWJlci52ZXJjZWwuYXBwL2FwaQ==");
 const SESSION_KEY = "kv_popunder_shown";
-const DELAY_MS = 30000; // 30 detik setelah halaman dimuat
+const DELAY_MS = 30000;
 
 /**
  * Popunder ad — muncul 1x per sesi, delay 30 detik, tidak saat membaca komik.
- * Tidak merender apapun ke layar (script-only).
+ * Mengambil ad_code dari slot "popup-global" di database.
  */
 export default function PopunderAd() {
   const { isAdFree } = useAuth();
@@ -18,19 +18,37 @@ export default function PopunderAd() {
   useEffect(() => {
     if (isAdFree || injectedRef.current) return;
     if (sessionStorage.getItem(SESSION_KEY)) return;
-
-    // Jangan tampilkan saat membaca komik
     if (location.pathname.startsWith("/baca/")) return;
 
     const timer = setTimeout(() => {
       if (injectedRef.current) return;
-      injectedRef.current = true;
-      sessionStorage.setItem(SESSION_KEY, "1");
 
-      const script = document.createElement("script");
-      script.src = POPUNDER_SRC;
-      script.async = true;
-      document.body.appendChild(script);
+      fetch(`${API_BASE}/ads`)
+        .then((r) => r.json())
+        .then((d) => {
+          const ads = d.ads || {};
+          const code = ads["popup-global"] || "";
+          if (!code || injectedRef.current) return;
+
+          injectedRef.current = true;
+          sessionStorage.setItem(SESSION_KEY, "1");
+
+          const temp = document.createElement("div");
+          temp.innerHTML = code;
+          const scripts = temp.querySelectorAll("script");
+
+          scripts.forEach((origScript) => {
+            const script = document.createElement("script");
+            if (origScript.src) {
+              script.src = origScript.src;
+              script.async = true;
+            } else {
+              script.textContent = origScript.textContent;
+            }
+            document.body.appendChild(script);
+          });
+        })
+        .catch(() => {});
     }, DELAY_MS);
 
     return () => clearTimeout(timer);
