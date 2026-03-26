@@ -7,11 +7,19 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     url: 'https://komikverse-swart.vercel.app',
-    allowNavigation: ['komikverse-swart.vercel.app', 'komikverse-api-amber.vercel.app']
+    allowNavigation: [
+      'komikverse-swart.vercel.app',
+      'komikverse-api-amber.vercel.app',
+      '*.highperformanceformat.com',
+      '*.profitablecpmratenetwork.com',
+      '*.adsterra.com',
+      '*.adstera.com',
+    ]
   },
   android: {
     backgroundColor: '#0d0d14',
-    allowMixedContent: true
+    allowMixedContent: true,
+    webContentsDebuggingEnabled: false
   }
 };
 

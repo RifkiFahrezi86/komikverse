@@ -2,6 +2,22 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../lib/auth";
 
 // ────────────────────────────────────────────────
+// WebView Detection
+// ────────────────────────────────────────────────
+
+const isWebView = (() => {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  // Capacitor sets this, plus common WebView indicators
+  return (
+    /\bwv\b/i.test(ua) ||
+    /WebView/i.test(ua) ||
+    (/(Android)/.test(ua) && /Version\/[\d.]+/.test(ua) && !/Chrome\/[\d.]+.*Mobile Safari/i.test(ua)) ||
+    !!(window as any).Capacitor
+  );
+})();
+
+// ────────────────────────────────────────────────
 // Ad Configurations (Adsterra)
 // ────────────────────────────────────────────────
 
@@ -25,20 +41,21 @@ function ensureAntiRedirectGuard() {
   if (guardActive) return;
   guardActive = true;
 
-  // Allow 1 popup for popunder, then block all
-  let popupAllowed = !sessionStorage.getItem("kv_popunder_fired");
-
-  const origOpen = window.open;
-  window.open = function (...args: Parameters<typeof window.open>) {
-    // Block popups on reader pages
-    if (window.location.pathname.startsWith("/baca/")) return null;
-    if (popupAllowed) {
-      popupAllowed = false;
-      sessionStorage.setItem("kv_popunder_fired", "1");
-      return origOpen.apply(window, args);
-    }
-    return null;
-  } as typeof window.open;
+  // In WebView, popups are already blocked natively — skip window.open override
+  // to avoid breaking ad script initialization
+  if (!isWebView) {
+    let popupAllowed = !sessionStorage.getItem("kv_popunder_fired");
+    const origOpen = window.open;
+    window.open = function (...args: Parameters<typeof window.open>) {
+      if (window.location.pathname.startsWith("/baca/")) return null;
+      if (popupAllowed) {
+        popupAllowed = false;
+        sessionStorage.setItem("kv_popunder_fired", "1");
+        return origOpen.apply(window, args);
+      }
+      return null;
+    } as typeof window.open;
+  }
 
   // Remove invisible click-jacking overlays
   const observer = new MutationObserver((mutations) => {
@@ -93,9 +110,31 @@ function queueBannerLoad(
         };
         const script = document.createElement("script");
         script.type = "text/javascript";
-        script.src = `//www.highperformanceformat.com/${config.key}/invoke.js`;
+        // Always use https:// — protocol-relative URLs can fail in WebView
+        script.src = `https://www.highperformanceformat.com/${config.key}/invoke.js`;
         script.onload = () => resolve();
-        script.onerror = () => resolve();
+        script.onerror = () => {
+          // Retry once after a short delay (WebView may need more time)
+          if (container.isConnected) {
+            setTimeout(() => {
+              (window as any).atOptions = {
+                key: config.key,
+                format: "iframe",
+                height: config.height,
+                width: config.width,
+                params: {},
+              };
+              const retry = document.createElement("script");
+              retry.type = "text/javascript";
+              retry.src = `https://www.highperformanceformat.com/${config.key}/invoke.js?t=${Date.now()}`;
+              retry.onload = () => resolve();
+              retry.onerror = () => resolve();
+              container.appendChild(retry);
+            }, 2000);
+          } else {
+            resolve();
+          }
+        };
         container.appendChild(script);
       }),
   );
@@ -241,6 +280,8 @@ export function Popunder() {
 
   useEffect(() => {
     if (isAdFree || injectedRef.current) return;
+    // Popunder doesn't work in WebView — skip entirely
+    if (isWebView) return;
     if (sessionStorage.getItem("kv_popunder_done")) return;
 
     const timer = setTimeout(() => {
