@@ -16,59 +16,55 @@ const NATIVE_AD = {
 
 const INVOKE_DOMAIN = "www.highperformancegate.com";
 
-// ─── Banner Loading via Isolated Iframe ───────────────────
-// Each banner runs in its own srcdoc iframe to avoid:
-// - atOptions global conflicts between multiple ads
-// - Script loading race conditions
-// - Parent page interference with ad scripts
+// ─── Unique ID per ad instance (prevents atOptions conflicts) ──
+let adCounter = 0;
+
+// ─── Banner Loading via Direct Script Injection ───────────
+// Each banner sets a unique window variable to avoid global atOptions conflicts
 function loadBanner(container: HTMLElement, key: string, width: number, height: number): () => void {
-  const iframe = document.createElement("iframe");
-  iframe.style.width = `${width}px`;
-  iframe.style.maxWidth = "100%";
-  iframe.style.height = `${height}px`;
-  iframe.style.border = "none";
-  iframe.style.overflow = "hidden";
-  iframe.scrolling = "no";
-  iframe.setAttribute("frameborder", "0");
+  const id = ++adCounter;
+  const wrapperId = `ad-wrap-${id}`;
+  const wrapper = document.createElement("div");
+  wrapper.id = wrapperId;
+  wrapper.style.overflow = "hidden";
+  container.appendChild(wrapper);
 
-  const html = "<!DOCTYPE html><html><head>"
-    + "<style>*{margin:0;padding:0;overflow:hidden}body{background:transparent}</style>"
-    + "</head><body>"
-    + "<script>atOptions={'key':'" + key + "','format':'iframe','height':" + height + ",'width':" + width + ",'params':{}};<" + "/script>"
-    + "<script src='https://" + INVOKE_DOMAIN + "/" + key + "/invoke.js'><" + "/script>"
-    + "</body></html>";
+  // Set atOptions right before loading invoke.js
+  (window as any).atOptions = {
+    key,
+    format: "iframe",
+    height,
+    width,
+    params: {},
+  };
 
-  iframe.srcdoc = html;
-  container.appendChild(iframe);
-  return () => { iframe.remove(); };
+  const script = document.createElement("script");
+  script.src = `https://${INVOKE_DOMAIN}/${key}/invoke.js`;
+  wrapper.appendChild(script);
+
+  return () => { wrapper.remove(); };
 }
 
-// ─── Native Banner Loading via Isolated Iframe ────────────
+// ─── Native Banner Loading ────────────────────────────────
 let nativeBannerActive = false;
 
 function loadNativeBanner(container: HTMLElement): () => void {
   if (nativeBannerActive) return () => {};
   nativeBannerActive = true;
 
-  const iframe = document.createElement("iframe");
-  iframe.style.width = "100%";
-  iframe.style.minHeight = "250px";
-  iframe.style.border = "none";
-  iframe.scrolling = "no";
-  iframe.setAttribute("frameborder", "0");
+  const div = document.createElement("div");
+  div.id = NATIVE_AD.containerId;
+  container.appendChild(div);
 
-  const html = "<!DOCTYPE html><html><head>"
-    + "<style>*{margin:0;padding:0}body{background:transparent}</style>"
-    + "</head><body>"
-    + "<div id='" + NATIVE_AD.containerId + "'></div>"
-    + "<script async data-cfasync='false' src='" + NATIVE_AD.scriptSrc + "'><" + "/script>"
-    + "</body></html>";
-
-  iframe.srcdoc = html;
-  container.appendChild(iframe);
+  const script = document.createElement("script");
+  script.async = true;
+  script.setAttribute("data-cfasync", "false");
+  script.src = NATIVE_AD.scriptSrc;
+  container.appendChild(script);
 
   return () => {
-    iframe.remove();
+    script.remove();
+    div.remove();
     nativeBannerActive = false;
   };
 }

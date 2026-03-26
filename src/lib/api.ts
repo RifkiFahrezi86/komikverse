@@ -327,13 +327,21 @@ export async function searchAllProviders(keyword: string): Promise<ApiResponse<C
 }
 
 export async function getComicDetail(slug: string): Promise<ApiResponse<ComicDetail>> {
-  // Try ALL providers in PARALLEL — pick the one with the most chapters
+  // Try current provider first for fast response
+  const primary = currentProvider;
+  try {
+    const res = await fetchApiWithProvider<ComicDetail>(`/detail/${slug}`, primary);
+    if (res.data) {
+      return { status: "Ok", data: normalizeDetail(res.data) };
+    }
+  } catch { /* fall through to other providers */ }
+
+  // Primary failed — try remaining providers in parallel
+  const others = PROVIDERS.filter(p => p.id !== primary);
   const results = await Promise.allSettled(
-    PROVIDERS.map(async (p) => {
+    others.map(async (p) => {
       const res = await fetchApiWithProvider<ComicDetail>(`/detail/${slug}`, p.id);
-      if (res.data) {
-        return { provider: p.id, data: normalizeDetail(res.data) };
-      }
+      if (res.data) return { provider: p.id, data: normalizeDetail(res.data) };
       throw new Error("No data");
     })
   );
@@ -343,9 +351,7 @@ export async function getComicDetail(slug: string): Promise<ApiResponse<ComicDet
     if (r.status === "fulfilled") {
       const chapters = r.value.data.chapters?.length || 0;
       const bestChapters = best?.data.chapters?.length || 0;
-      if (!best || chapters > bestChapters) {
-        best = r.value;
-      }
+      if (!best || chapters > bestChapters) best = r.value;
     }
   }
 
