@@ -118,10 +118,29 @@ function queueBannerLoad(
 // ────────────────────────────────────────────────
 // Ad Loaded Detection
 // Returns 'loading' | 'loaded' | 'failed'
-// - Watches container for injected iframes / images
-// - Hides error iframes (chrome-error://, about:blank)
-// - Times out → 'failed' if nothing loads
+//
+// Key insight: when an iframe loads a REAL cross-origin ad,
+// `contentDocument` returns null (blocked by CORS).
+// When WebView renders its own error page ("Halaman web tidak
+// tersedia") inside the iframe, `contentDocument` IS accessible
+// because the error page is a local document.
+// This lets us distinguish real ads from error pages.
 // ────────────────────────────────────────────────
+
+function isErrorIframe(iframe: HTMLIFrameElement): boolean {
+  const src = iframe.src || "";
+  if (!src || src === "about:blank" || src.startsWith("chrome-error://")) return true;
+  try {
+    // Cross-origin ad → contentDocument is null (CORS) → NOT an error
+    // WebView error page → contentDocument is accessible → IS an error
+    const doc = iframe.contentDocument;
+    if (doc) return true;
+  } catch (_) {
+    // SecurityError thrown → cross-origin → real ad content
+    return false;
+  }
+  return false;
+}
 
 function useAdLoaded(
   containerRef: React.RefObject<HTMLDivElement | null>,
@@ -141,36 +160,28 @@ function useAdLoaded(
     const checkContent = () => {
       if (settled || !el.isConnected) return;
 
-      // Check for iframes
       const iframes = el.querySelectorAll("iframe");
       for (const iframe of iframes) {
-        const src = iframe.src || "";
-        if (src.startsWith("chrome-error://") || src === "about:blank") {
-          iframe.style.display = "none";
+        if (isErrorIframe(iframe as HTMLIFrameElement)) {
+          (iframe as HTMLElement).style.display = "none";
           continue;
         }
-        if (src.startsWith("http")) { mark("loaded"); return; }
+        // Has a real cross-origin iframe → ad loaded successfully
+        mark("loaded");
+        return;
       }
 
-      // Check for native ad content (images)
-      const imgs = el.querySelectorAll("img");
-      for (const img of imgs) {
-        if (img.src && img.src.startsWith("http")) { mark("loaded"); return; }
-      }
+      // Check for native ad content (images rendered by ad script)
+      const imgs = el.querySelectorAll("img[src^='http']");
+      if (imgs.length > 0) { mark("loaded"); return; }
     };
 
     const observer = new MutationObserver(() => {
-      // Attach handlers to new iframes
       el.querySelectorAll("iframe:not([data-kv-w])").forEach((iframe) => {
         (iframe as HTMLIFrameElement).dataset.kvW = "1";
         iframe.addEventListener("load", () => {
-          try {
-            const src = (iframe as HTMLIFrameElement).src || "";
-            if (src.startsWith("chrome-error://") || src === "about:blank") {
-              (iframe as HTMLElement).style.display = "none";
-            }
-          } catch (_) {}
-          checkContent();
+          // Re-check after iframe finishes loading
+          setTimeout(checkContent, 100);
         });
         iframe.addEventListener("error", () => {
           (iframe as HTMLElement).style.display = "none";
@@ -180,7 +191,7 @@ function useAdLoaded(
     });
     observer.observe(el, { childList: true, subtree: true });
 
-    const interval = setInterval(checkContent, 1500);
+    const interval = setInterval(checkContent, 2000);
     const timeout = setTimeout(() => {
       clearInterval(interval);
       observer.disconnect();
