@@ -20,18 +20,13 @@ export default function MobileStickyAd() {
 
     const container = containerRef.current;
 
-    // Set atOptions before loading invoke.js
-    (window as any).atOptions = {
-      key: AD_KEY,
-      format: "iframe",
-      height: 50,
-      width: 320,
-      params: {},
-    };
+    const inline = document.createElement("script");
+    inline.textContent = `atOptions = { 'key': '${AD_KEY}', 'format': 'iframe', 'height': 50, 'width': 320, 'params': {} };`;
+    container.appendChild(inline);
 
-    const script = document.createElement("script");
-    script.src = `https://${INVOKE_DOMAIN}/${AD_KEY}/invoke.js`;
-    container.appendChild(script);
+    const external = document.createElement("script");
+    external.src = `https://${INVOKE_DOMAIN}/${AD_KEY}/invoke.js`;
+    container.appendChild(external);
 
     return () => {
       container.innerHTML = "";

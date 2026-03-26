@@ -16,33 +16,43 @@ const NATIVE_AD = {
 
 const INVOKE_DOMAIN = "www.highperformancegate.com";
 
-// ─── Unique ID per ad instance (prevents atOptions conflicts) ──
-let adCounter = 0;
+// ─── Serialized Banner Queue ──────────────────────────────
+// Ads MUST load one-at-a-time because invoke.js reads the global
+// window.atOptions variable. If two ads set atOptions simultaneously,
+// one ad gets the wrong config. Queue with 3s timeout per ad ensures
+// the chain never hangs even if a script fails silently.
+let bannerQueue: Promise<void> = Promise.resolve();
 
-// ─── Banner Loading via Direct Script Injection ───────────
-// Each banner sets a unique window variable to avoid global atOptions conflicts
 function loadBanner(container: HTMLElement, key: string, width: number, height: number): () => void {
-  const id = ++adCounter;
-  const wrapperId = `ad-wrap-${id}`;
-  const wrapper = document.createElement("div");
-  wrapper.id = wrapperId;
-  wrapper.style.overflow = "hidden";
-  container.appendChild(wrapper);
+  let cancelled = false;
+  const elements: HTMLElement[] = [];
 
-  // Set atOptions right before loading invoke.js
-  (window as any).atOptions = {
-    key,
-    format: "iframe",
-    height,
-    width,
-    params: {},
+  bannerQueue = bannerQueue.then(() => new Promise<void>((resolve) => {
+    if (cancelled) { resolve(); return; }
+
+    // Timeout: if invoke.js doesn't load/fire within 3s, move on
+    const timer = setTimeout(resolve, 3000);
+
+    (window as any).atOptions = {
+      key,
+      format: "iframe",
+      height,
+      width,
+      params: {},
+    };
+
+    const script = document.createElement("script");
+    script.src = `https://${INVOKE_DOMAIN}/${key}/invoke.js`;
+    script.onload = () => { clearTimeout(timer); setTimeout(resolve, 100); };
+    script.onerror = () => { clearTimeout(timer); resolve(); };
+    container.appendChild(script);
+    elements.push(script);
+  }));
+
+  return () => {
+    cancelled = true;
+    elements.forEach((el) => el.remove());
   };
-
-  const script = document.createElement("script");
-  script.src = `https://${INVOKE_DOMAIN}/${key}/invoke.js`;
-  wrapper.appendChild(script);
-
-  return () => { wrapper.remove(); };
 }
 
 // ─── Native Banner Loading ────────────────────────────────
