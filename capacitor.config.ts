@@ -7,22 +7,15 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     url: 'https://komikverse-swart.vercel.app',
-    allowNavigation: [
-      'komikverse-swart.vercel.app',
-      'komikverse-api-amber.vercel.app',
-      '*.highperformanceformat.com',
-      '*.profitablecpmratenetwork.com',
-      '*.adsterra.com',
-      '*.adstera.com',
-    ]
+    // Allow ALL domains so ad iframes can load from any CDN/redirect domain.
+    // Adsterra ads redirect through many domains — whitelisting them all is impractical.
+    allowNavigation: ['*']
   },
   android: {
     backgroundColor: '#0d0d14',
     allowMixedContent: true,
-    webContentsDebuggingEnabled: false,
-    // Override UA to look like regular Chrome — removes "; wv" and "Version/4.0" WebView markers.
-    // Without this, ad networks (Adsterra etc.) detect WebView and refuse to serve ads.
-    overrideUserAgent: 'Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.39 Mobile Safari/537.36'
+    webContentsDebuggingEnabled: false
+    // UA modification is done in MainActivity.java (dynamic strip, not static override)
   }
 };
 
