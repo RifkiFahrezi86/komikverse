@@ -62,6 +62,10 @@ function loadNativeBanner(container: HTMLElement): () => void {
   if (nativeBannerActive) return () => {};
   nativeBannerActive = true;
 
+  // Remove any old container with same ID to avoid conflicts
+  const old = document.getElementById(NATIVE_AD.containerId);
+  if (old) old.remove();
+
   const div = document.createElement("div");
   div.id = NATIVE_AD.containerId;
   container.appendChild(div);

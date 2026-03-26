@@ -356,7 +356,7 @@ export default function HomePage() {
         </section>
 
         {/* ─── Populer Section ─── */}
-        <AdSlot type="728x90" className="mb-6 rounded-xl overflow-hidden" />
+        <AdSlot type="468x60" className="mb-6 rounded-xl overflow-hidden" />
         <section className="mb-10">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
             <h2 className="font-display text-lg sm:text-xl text-white/85 flex items-center gap-2.5 font-bold">
@@ -392,7 +392,7 @@ export default function HomePage() {
           )}
         </section>
 
-        <AdSlot type="468x60" className="mb-6 rounded-xl overflow-hidden" />
+        <AdSlot type="300x250" className="mb-6 rounded-xl overflow-hidden" />
       </div>
     </div>
   );

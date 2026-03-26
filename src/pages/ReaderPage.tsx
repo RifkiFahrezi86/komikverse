@@ -284,7 +284,7 @@ export default function ReaderPage() {
               </React.Fragment>
             ))}
             {/* Ad Slot - Reader Bottom */}
-            <AdSlot type="728x90" className="mt-2" />
+            <AdSlot type="468x60" className="mt-2" />
           </div>
         ) : (
           <div className="flex items-center justify-center min-h-screen px-4">
