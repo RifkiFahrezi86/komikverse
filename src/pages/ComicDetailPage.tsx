@@ -47,6 +47,17 @@ export default function ComicDetailPage() {
   const [viewCount, setViewCount] = useState(0);
   const currentProvider = getProvider();
 
+  const filteredChapters = useMemo(() => {
+    if (!comic) return [];
+    let chapters = [...comic.chapters];
+    if (sortAsc) chapters.reverse();
+    if (chapterSearch.trim()) {
+      const q = chapterSearch.trim().toLowerCase();
+      chapters = chapters.filter((ch) => ch.title.toLowerCase().includes(q));
+    }
+    return chapters;
+  }, [comic?.chapters, sortAsc, chapterSearch]);
+
   useEffect(() => {
     if (!slug) return;
     setLoading(true);
@@ -118,16 +129,6 @@ export default function ComicDetailPage() {
     comicType: comic.type,
     genres,
   };
-
-  const filteredChapters = useMemo(() => {
-    let chapters = [...comic.chapters];
-    if (sortAsc) chapters.reverse();
-    if (chapterSearch.trim()) {
-      const q = chapterSearch.trim().toLowerCase();
-      chapters = chapters.filter((ch) => ch.title.toLowerCase().includes(q));
-    }
-    return chapters;
-  }, [comic.chapters, sortAsc, chapterSearch]);
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top page-bottom md:pb-12">
