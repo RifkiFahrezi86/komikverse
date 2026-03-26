@@ -13,7 +13,6 @@ export default function MobileStickyAd() {
   const containerRef = useRef<HTMLDivElement>(null);
   const injectedRef = useRef(false);
   const [dismissed, setDismissed] = useState(false);
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (isAdFree || dismissed || injectedRef.current || !containerRef.current) return;
@@ -21,15 +20,24 @@ export default function MobileStickyAd() {
 
     const container = containerRef.current;
 
-    const inline = document.createElement("script");
-    inline.textContent = `atOptions = { 'key': '${AD_KEY}', 'format': 'iframe', 'height': 50, 'width': 320, 'params': {} };`;
-    container.appendChild(inline);
+    const iframe = document.createElement("iframe");
+    iframe.style.width = "320px";
+    iframe.style.maxWidth = "100%";
+    iframe.style.height = "50px";
+    iframe.style.border = "none";
+    iframe.style.overflow = "hidden";
+    iframe.scrolling = "no";
+    iframe.setAttribute("frameborder", "0");
 
-    const external = document.createElement("script");
-    external.src = `https://${INVOKE_DOMAIN}/${AD_KEY}/invoke.js`;
-    external.onload = () => setLoaded(true);
-    external.onerror = () => setLoaded(true);
-    container.appendChild(external);
+    const html = "<!DOCTYPE html><html><head>"
+      + "<style>*{margin:0;padding:0;overflow:hidden}body{background:transparent}</style>"
+      + "</head><body>"
+      + "<script>atOptions={'key':'" + AD_KEY + "','format':'iframe','height':50,'width':320,'params':{}};<" + "/script>"
+      + "<script src='https://" + INVOKE_DOMAIN + "/" + AD_KEY + "/invoke.js'><" + "/script>"
+      + "</body></html>";
+
+    iframe.srcdoc = html;
+    container.appendChild(iframe);
 
     return () => {
       container.innerHTML = "";
