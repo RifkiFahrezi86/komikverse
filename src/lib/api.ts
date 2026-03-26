@@ -321,11 +321,6 @@ export async function searchComics(keyword: string): Promise<ApiResponse<Comic[]
   return { status: "Ok", data };
 }
 
-export async function searchAllProviders(keyword: string): Promise<ApiResponse<Comic[]>> {
-  const data = await fetchAllProviders(`/search?keyword=${encodeURIComponent(keyword)}`);
-  return { status: "Ok", data };
-}
-
 export async function getComicDetail(slug: string): Promise<ApiResponse<ComicDetail>> {
   // Try current provider first for fast response
   const primary = currentProvider;
@@ -363,9 +358,17 @@ export async function getComicDetail(slug: string): Promise<ApiResponse<ComicDet
 }
 
 export async function getChapterImages(slug: string): Promise<ApiResponse<ChapterData[]>> {
-  // Try ALL providers in PARALLEL — first valid result wins
+  // Try current provider first for fast response
+  const primary = currentProvider;
+  try {
+    const res = await fetchApiWithProvider<ChapterData[]>(`/read/${slug}`, primary);
+    if (res.data && res.data.length > 0 && res.data[0]?.panel?.length > 0) return res;
+  } catch { /* fall through */ }
+
+  // Primary failed — try others in parallel
+  const others = PROVIDERS.filter(p => p.id !== primary);
   const results = await Promise.allSettled(
-    PROVIDERS.map(async (p) => {
+    others.map(async (p) => {
       const res = await fetchApiWithProvider<ChapterData[]>(`/read/${slug}`, p.id);
       if (res.data && res.data.length > 0 && res.data[0]?.panel?.length > 0) return res;
       throw new Error("No panels");
@@ -379,37 +382,13 @@ export async function getChapterImages(slug: string): Promise<ApiResponse<Chapte
 }
 
 export async function getGenres(): Promise<ApiResponse<Genre[]>> {
-  // Merge genres from all providers
-  const results = await Promise.allSettled(
-    PROVIDERS.map(async (p) => {
-      try {
-        const res = await fetchApiWithProvider<Genre[]>("/genre", p.id);
-        return res.data || [];
-      } catch {
-        return [];
-      }
-    })
-  );
-  const seen = new Set<string>();
-  const merged: Genre[] = [];
-  for (const result of results) {
-    if (result.status === "fulfilled") {
-      for (const g of result.value) {
-        const key = g.title.toLowerCase();
-        if (!seen.has(key)) {
-          seen.add(key);
-          merged.push(g);
-        }
-      }
-    }
-  }
-  merged.sort((a, b) => a.title.localeCompare(b.title));
-  return { status: "Ok", data: merged };
+  // Use current provider only for speed — no need to merge all 3
+  return fetchApiWithProvider<Genre[]>("/genre", currentProvider);
 }
 
 export async function getComicsByGenre(slug: string, page = 1): Promise<ApiResponse<Comic[]>> {
-  const data = await fetchAllProviders(`/genre/${slug}?page=${page}`);
-  return { status: "Ok", data };
+  // Use current provider only for speed
+  return fetchApiWithProvider<Comic[]>(`/genre/${slug}?page=${page}`, currentProvider);
 }
 
 // ─── View Tracking ───

@@ -1,7 +1,8 @@
 /**
- * Shared ad-code fetcher & script injection utilities.
+ * Shared ad-code fetcher & iframe-isolated injection utilities.
  * Single cache — all ad components share one API call.
  * Prefetch starts at module load time for fastest first paint.
+ * Ads run inside sandboxed iframes so scripts can't touch the parent page.
  */
 
 const API_BASE =
@@ -30,81 +31,82 @@ export function getAds(): Promise<Record<string, string>> {
   return adsFetchPromise;
 }
 
-// Prefetch: start the API call NOW (module load) so it's likely
-// resolved by the time any ad component mounts.
+// Prefetch at module load so data is ready when components mount.
 getAds();
 
-// ─── Serialized Script Injection Queue ────────────────────
-// Adsterra invoke.js reads window.atOptions globally.
-// Scripts must run one-at-a-time to prevent race conditions.
-let adQueue: Promise<void> = Promise.resolve();
-
+// ─── Iframe-Isolated Ad Injection ─────────────────────────
+// Each ad runs inside its own iframe so third-party scripts
+// cannot inject elements into the parent page (fixes ads
+// appearing in admin panel, overlapping nav, etc.).
 export function injectAdCode(
   container: HTMLElement,
   adCode: string
 ): () => void {
-  let cancelled = false;
-
-  adQueue = adQueue.then(
-    () =>
-      new Promise<void>((resolve) => {
-        if (cancelled) {
-          resolve();
-          return;
-        }
-
-        // Safety timeout — move on even if script hangs
-        const timer = setTimeout(resolve, 3000);
-
-        const temp = document.createElement("div");
-        temp.innerHTML = adCode;
-
-        const scripts: HTMLScriptElement[] = [];
-        const nodes: Node[] = [];
-
-        while (temp.firstChild) {
-          const node = temp.firstChild;
-          temp.removeChild(node);
-          if (node instanceof HTMLScriptElement) {
-            scripts.push(node);
-          } else {
-            nodes.push(node);
-          }
-        }
-
-        // Non-script nodes first (container divs, etc.)
-        nodes.forEach((n) => container.appendChild(n));
-
-        // Scripts sequentially: inline atOptions → external invoke.js
-        let i = 0;
-        function nextScript() {
-          if (i >= scripts.length) {
-            clearTimeout(timer);
-            setTimeout(resolve, 50);
-            return;
-          }
-          const old = scripts[i++];
-          const ns = document.createElement("script");
-          for (const attr of Array.from(old.attributes)) {
-            ns.setAttribute(attr.name, attr.value);
-          }
-          if (old.textContent && !old.src) {
-            ns.textContent = old.textContent;
-            container.appendChild(ns);
-            nextScript();
-          } else if (old.src) {
-            ns.onload = nextScript;
-            ns.onerror = nextScript;
-            container.appendChild(ns);
-          } else {
-            nextScript();
-          }
-        }
-        nextScript();
-      })
+  const iframe = document.createElement("iframe");
+  iframe.style.cssText =
+    "width:100%;border:none;overflow:hidden;display:block;background:transparent;";
+  iframe.setAttribute("scrolling", "no");
+  iframe.setAttribute(
+    "sandbox",
+    "allow-scripts allow-popups allow-popups-to-escape-sandbox"
   );
 
+  container.appendChild(iframe);
+
+  const html = `<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:transparent;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:20px}
+  img,iframe{max-width:100%!important;height:auto!important}
+</style>
+<script>
+  // Auto-resize iframe height to fit content
+  function notifyHeight(){
+    var h=document.body.scrollHeight||document.documentElement.scrollHeight;
+    if(h>0)parent.postMessage({type:'adHeight',height:h},'*');
+  }
+  window.addEventListener('load',function(){setTimeout(notifyHeight,200);setTimeout(notifyHeight,1000);setTimeout(notifyHeight,3000)});
+  new MutationObserver(function(){setTimeout(notifyHeight,100)}).observe(document.body,{childList:true,subtree:true,attributes:true});
+</script>
+</head><body>${adCode}</body></html>`;
+
+  // Write content after iframe is in DOM
+  const writeContent = () => {
+    try {
+      const doc = iframe.contentDocument;
+      if (doc) {
+        doc.open();
+        doc.write(html);
+        doc.close();
+      }
+    } catch {
+      // Fallback: use srcdoc
+      iframe.srcdoc = html;
+    }
+  };
+
+  if (iframe.contentDocument?.readyState === "complete") {
+    writeContent();
+  } else {
+    iframe.addEventListener("load", writeContent, { once: true });
+    // Trigger load by setting a blank src
+    iframe.src = "about:blank";
+  }
+
+  // Listen for height resize messages from the iframe
+  const onMessage = (e: MessageEvent) => {
+    if (e.source === iframe.contentWindow && e.data?.type === "adHeight") {
+      const h = Math.min(e.data.height, 600); // cap at 600px
+      iframe.style.height = h + "px";
+    }
+  };
+  window.addEventListener("message", onMessage);
+
   return () => {
-    cancelled = true;
+    window.removeEventListener("message", onMessage);
+    iframe.remove();
   };
 }

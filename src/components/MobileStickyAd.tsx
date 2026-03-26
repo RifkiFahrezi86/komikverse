@@ -35,10 +35,10 @@ export default function MobileStickyAd() {
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-40 md:hidden flex flex-col items-center"
-      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      className="fixed left-0 right-0 z-40 md:hidden flex flex-col items-center"
+      style={{ bottom: "3.5rem", paddingBottom: "0px" }}
     >
-      <div className="relative bg-[#0e0e16]/95 backdrop-blur-sm border-t border-white/[0.06] w-full flex justify-center py-1">
+      <div className="relative bg-[#0e0e16]/95 backdrop-blur-sm border-t border-b border-white/[0.06] w-full flex justify-center py-1">
         <button
           onClick={() => setDismissed(true)}
           className="absolute -top-6 right-2 z-50 w-6 h-6 rounded-full bg-black/80 border border-white/20 flex items-center justify-center text-white/80 hover:text-white hover:bg-red-600 transition-all shadow-lg"

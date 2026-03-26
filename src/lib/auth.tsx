@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import type { ReactNode } from "react";
 import { getReadingStats } from "./history";
 import { syncStreak } from "./api";
@@ -107,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const login = async (username: string, password: string) => {
+  const login = useCallback(async (username: string, password: string) => {
     const data = await authFetch("/auth/login", {
       method: "POST",
       body: JSON.stringify({ username, password }),
@@ -116,9 +116,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(data.token);
     localStorage.setItem("kv_user", JSON.stringify(data.user));
     localStorage.setItem("kv_token", data.token);
-  };
+  }, []);
 
-  const register = async (username: string, email: string, password: string) => {
+  const register = useCallback(async (username: string, email: string, password: string) => {
     const data = await authFetch("/auth/register", {
       method: "POST",
       body: JSON.stringify({ username, email, password }),
@@ -127,18 +127,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(data.token);
     localStorage.setItem("kv_user", JSON.stringify(data.user));
     localStorage.setItem("kv_token", data.token);
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     authFetch("/auth/logout", { method: "POST" }).catch(() => {});
     setUser(null);
     setToken(null);
     localStorage.removeItem("kv_user");
     localStorage.removeItem("kv_token");
-  };
+  }, []);
+
+  const value = useMemo(() => ({
+    user, token, loading, login, register, logout,
+    isAdmin: user?.role === "admin" || user?.role === "owner",
+    isOwner: user?.role === "owner",
+    isAdFree: user?.role === "admin" || user?.role === "owner" || user?.ad_free === true || (!!user?.ad_free_until && new Date(user.ad_free_until) > new Date()),
+  }), [user, token, loading, login, register, logout]);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, isAdmin: user?.role === "admin" || user?.role === "owner", isOwner: user?.role === "owner", isAdFree: user?.role === "admin" || user?.role === "owner" || user?.ad_free === true || (!!user?.ad_free_until && new Date(user.ad_free_until) > new Date()) }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

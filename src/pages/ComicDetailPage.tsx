@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   BookOpen,
@@ -118,6 +118,16 @@ export default function ComicDetailPage() {
     comicType: comic.type,
     genres,
   };
+
+  const filteredChapters = useMemo(() => {
+    let chapters = [...comic.chapters];
+    if (sortAsc) chapters.reverse();
+    if (chapterSearch.trim()) {
+      const q = chapterSearch.trim().toLowerCase();
+      chapters = chapters.filter((ch) => ch.title.toLowerCase().includes(q));
+    }
+    return chapters;
+  }, [comic.chapters, sortAsc, chapterSearch]);
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 page-top page-bottom md:pb-12">
@@ -343,23 +353,14 @@ export default function ComicDetailPage() {
         </div>
 
         {/* Chapter List */}
-        {(() => {
-          let chapters = [...comic.chapters];
-          if (sortAsc) chapters.reverse();
-          if (chapterSearch.trim()) {
-            const q = chapterSearch.trim().toLowerCase();
-            chapters = chapters.filter((ch) => ch.title.toLowerCase().includes(q));
-          }
-
-          return (
-            <div className="rounded-xl overflow-hidden max-h-[65vh] overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
+        <div className="rounded-xl overflow-hidden max-h-[65vh] overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
               <div className="space-y-1">
-                {chapters.length === 0 ? (
+                {filteredChapters.length === 0 ? (
                   <div className="rounded-lg p-8 text-center text-[#5c5c6e] font-body text-sm">
                     {chapterSearch.trim() ? `Tidak ada chapter "${chapterSearch}"` : "Belum ada chapter tersedia"}
                   </div>
                 ) : (
-                  chapters.map((ch, i) => {
+                  filteredChapters.map((ch, i) => {
                     const chSlug = extractChapterSlug(ch.href);
                     const isRead = readChapterSlugs.has(chSlug);
                     const isLastRead = lastRead?.chapterSlug === chSlug;
@@ -415,8 +416,6 @@ export default function ComicDetailPage() {
                 )}
               </div>
             </div>
-          );
-        })()}
       </section>
 
       {/* Ad Slot - Sidebar */}

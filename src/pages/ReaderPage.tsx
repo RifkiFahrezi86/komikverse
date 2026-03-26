@@ -196,7 +196,7 @@ export default function ReaderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black relative" onClick={toggleNav}>
+    <div className="min-h-screen bg-black relative" style={{ touchAction: 'pan-y' }} onClick={toggleNav}>
       {/* Top controls */}
       <div
         className={`fixed top-0 left-0 right-0 z-50 bg-[#0a0a0f]/95 backdrop-blur-xl border-b border-white/[0.04] transition-transform duration-300 ${
@@ -251,7 +251,7 @@ export default function ReaderPage() {
       {/* Reader content */}
       <div className="pt-12">
         {viewMode === "long-strip" ? (
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-3xl mx-auto overflow-hidden">
             {/* Ad Slot - Reader Top */}
             <AdSlot slot="reader-top" className="mb-2" />
             {panels.map((src, i) => (
@@ -261,7 +261,8 @@ export default function ReaderPage() {
                   alt={`Panel ${i + 1}`}
                   loading={i < 3 ? "eager" : "lazy"}
                   decoding="async"
-                  className="w-full block"
+                  className="w-full max-w-full h-auto block select-none"
+                  draggable={false}
                   referrerPolicy="no-referrer"
                   onError={(e) => {
                     const img = e.currentTarget;
