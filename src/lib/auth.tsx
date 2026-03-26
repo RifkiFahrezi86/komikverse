@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
+import { getReadingStats } from "./history";
+import { syncStreak } from "./api";
 
 const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9rb21pa3ZlcnNlLWFwaS1hbWJlci52ZXJjZWwuYXBwL2FwaQ==");
 // Remove trailing /api to get base URL for auth endpoints
@@ -84,6 +86,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setToken(data.token);
           localStorage.setItem("kv_token", data.token);
         }
+        // Sync streak to server on every app load
+        try {
+          const s = getReadingStats();
+          const today = new Date();
+          const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+          syncStreak(s.currentStreak, s.longestStreak, dateStr);
+        } catch { /* ignore */ }
       })
       .catch((err) => {
         // Only logout on explicit 401/403 from server (expired/invalid token)

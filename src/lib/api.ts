@@ -483,7 +483,8 @@ export async function syncStreak(current_streak: number, longest_streak: number,
 
 export async function getStreakLeaderboard(limit = 20): Promise<any[]> {
   try {
-    const res = await fetch(`${AUTH_BASE}/auth/streak-leaderboard?limit=${limit}`);
+    // Add cache-busting param to avoid stale Vercel edge cache
+    const res = await fetch(`${AUTH_BASE}/auth/streak-leaderboard?limit=${limit}&_t=${Math.floor(Date.now() / 60000)}`);
     const data = await res.json();
     return data.data || [];
   } catch {

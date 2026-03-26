@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Trophy, Eye, Flame, Crown, Star, Gift, ImageOff, BarChart3, RefreshCw } from "lucide-react";
 import type { Comic } from "../lib/api";
-import { getAllPopular, getStreakLeaderboard, formatViews } from "../lib/api";
+import { getAllPopular, getStreakLeaderboard, syncStreak, formatViews } from "../lib/api";
+import { getReadingStats } from "../lib/history";
+import { useAuth } from "../lib/auth";
 
 const TYPE_TABS = [
   { key: "all", label: "Semua" },
@@ -74,6 +76,7 @@ function PodiumCard({ comic, position }: { comic: Comic; position: 1 | 2 | 3 }) 
 }
 
 export default function RankingPage() {
+  const { user } = useAuth();
   const [mainTab, setMainTab] = useState<"ranking" | "streak">("ranking");
   const [comicTab, setComicTab] = useState("all");
   const [allComics, setAllComics] = useState<Comic[]>([]);
@@ -81,20 +84,29 @@ export default function RankingPage() {
   const [loadingComics, setLoadingComics] = useState(true);
   const [loadingStreaks, setLoadingStreaks] = useState(true);
 
-  const fetchData = () => {
+  const fetchData = async () => {
     setLoadingComics(true);
     setLoadingStreaks(true);
     getAllPopular().then((comics) => {
       setAllComics(comics);
       setLoadingComics(false);
     });
+    // Sync streak first so leaderboard reflects current data
+    if (user) {
+      try {
+        const s = getReadingStats();
+        const today = new Date();
+        const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        await syncStreak(s.currentStreak, s.longestStreak, dateStr);
+      } catch { /* ignore */ }
+    }
     getStreakLeaderboard(20).then((data) => {
       setStreakUsers(data);
       setLoadingStreaks(false);
     });
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = (comicTab === "all" ? allComics : allComics.filter(c => c.type?.toLowerCase() === comicTab))
     .slice()
