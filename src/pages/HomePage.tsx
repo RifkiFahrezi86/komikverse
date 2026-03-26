@@ -392,7 +392,7 @@ export default function HomePage() {
           )}
         </section>
 
-        <AdSlot slot="home-bottom-1" className="mb-6 rounded-xl overflow-hidden" />
+        <AdSlot slot="home-bottom" className="mb-6 rounded-xl overflow-hidden" />
       </div>
     </div>
   );
