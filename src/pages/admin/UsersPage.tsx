@@ -192,7 +192,8 @@ export default function AdminUsersPage() {
         </div>
       ) : (
         <div className="bg-[#12121a] rounded-xl border border-white/[0.04] overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm font-body">
               <thead>
                 <tr className="border-b border-white/[0.04]">
@@ -311,6 +312,79 @@ export default function AdminUsersPage() {
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card Layout */}
+          <div className="md:hidden divide-y divide-white/[0.04]">
+            {filtered.map((u) => {
+              const isSelf = currentUser?.id === u.id;
+              return (
+                <div key={u.id} className="p-3">
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-8 h-8 rounded-full bg-[#f97316]/20 flex items-center justify-center text-[#f97316] text-xs font-bold shrink-0">
+                      {u.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      {editId === u.id ? (
+                        <div className="flex items-center gap-1">
+                          <input value={editName} onChange={(e) => setEditName(e.target.value)} className="px-2 py-1 rounded bg-white/[0.03] border border-white/[0.06] text-xs font-body text-white focus:outline-none focus:border-[#f97316]/30 flex-1" autoFocus onKeyDown={(e) => e.key === "Enter" && saveEditName(u.id)} />
+                          <button onClick={() => saveEditName(u.id)} className="p-1 text-emerald-400 hover:bg-emerald-500/10 rounded"><Check size={13} /></button>
+                          <button onClick={() => setEditId(null)} className="p-1 text-[#5c5c6e] hover:text-white rounded"><X size={13} /></button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-sm text-white/85 font-medium">{u.username}</span>
+                          {isSelf && <span className="text-[9px] text-[#5c5c6e] bg-white/[0.04] px-1.5 py-0.5 rounded">Anda</span>}
+                          {u.is_seed && <span className="text-[9px] text-purple-400 bg-purple-500/15 px-1.5 py-0.5 rounded font-bold">SEED</span>}
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                            u.role === "owner" ? "bg-yellow-500/15 text-yellow-400" : u.role === "admin" ? "bg-[#f97316]/15 text-[#f97316]" : "bg-white/[0.04] text-[#8e8ea0]"
+                          }`}>
+                            {u.role === "owner" && <Crown size={9} />}
+                            {u.role === "admin" && <Shield size={9} />}
+                            {u.role}
+                          </span>
+                        </div>
+                      )}
+                      <p className="text-[11px] text-[#5c5c6e] font-body truncate">{u.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pl-10">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-[#5c5c6e] font-body">{new Date(u.created_at).toLocaleDateString("id-ID")}</span>
+                      {u.role !== "admin" && u.role !== "owner" && (
+                        <button
+                          onClick={() => toggleAdFree(u)}
+                          disabled={actionId === u.id}
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold transition-colors ${
+                            u.ad_free ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"
+                          }`}
+                        >
+                          {u.ad_free ? <><Tv size={9} /> Bebas</> : <><Ban size={9} /> Iklan</>}
+                        </button>
+                      )}
+                    </div>
+                    {actionId === u.id ? (
+                      <Loader2 size={14} className="text-[#f97316] animate-spin" />
+                    ) : !isSelf ? (
+                      <div className="flex items-center gap-0.5">
+                        {isOwner && u.role !== "owner" && (
+                          <button onClick={() => toggleRole(u)} className={`p-1.5 rounded transition-colors ${u.role === "admin" ? "text-yellow-400 hover:bg-yellow-500/10" : "text-emerald-400 hover:bg-emerald-500/10"}`}>
+                            {u.role === "admin" ? <ShieldOff size={13} /> : <ShieldCheck size={13} />}
+                          </button>
+                        )}
+                        <button onClick={() => { setEditId(u.id); setEditName(u.username); }} className="p-1.5 rounded text-blue-400 hover:bg-blue-500/10 transition-colors"><Pencil size={13} /></button>
+                        <button onClick={() => { setResetTarget(u); setResetPw(""); setResetMsg(null); setResetShow(false); }} className="p-1.5 rounded text-amber-400 hover:bg-amber-500/10 transition-colors"><KeyRound size={13} /></button>
+                        {(isOwner || u.role === "user") && (
+                          <button onClick={() => deleteUser(u.id)} className="p-1.5 rounded text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 size={13} /></button>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-[#5c5c6e]">—</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
