@@ -86,12 +86,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setToken(data.token);
           localStorage.setItem("kv_token", data.token);
         }
-        // Sync streak to server on every app load
+        // Sync streak to server on every app load — use MAX of local vs server
         try {
           const s = getReadingStats();
+          const serverStreak = data.user?.current_streak || 0;
+          const serverLongest = data.user?.longest_streak || 0;
+          const bestCurrent = Math.max(s.currentStreak, serverStreak);
+          const bestLongest = Math.max(s.longestStreak, serverLongest);
           const today = new Date();
           const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-          syncStreak(s.currentStreak, s.longestStreak, dateStr);
+          syncStreak(bestCurrent, bestLongest, dateStr);
         } catch { /* ignore */ }
       })
       .catch((err) => {

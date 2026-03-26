@@ -45,7 +45,7 @@ export function recordRead(entry: Omit<ReadEntry, "readAt">) {
   history.push({ ...entry, readAt: Date.now() });
   saveHistory(history);
 
-  // Sync streak to server in background
+  // Sync streak to server in background — use MAX with server value
   try {
     const stats = getReadingStats();
     const today = new Date();

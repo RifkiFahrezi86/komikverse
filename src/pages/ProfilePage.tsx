@@ -42,10 +42,14 @@ export default function ProfilePage() {
   useEffect(() => {
     const s = getReadingStats();
     setStats(s);
-    // Always sync streak to server (including 0 to reset stale streaks)
-    const today = new Date();
-    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    syncStreak(s.currentStreak, s.longestStreak, dateStr);
+    // Sync streak — use MAX of local vs server to avoid lowering
+    if (user) {
+      const bestCurrent = Math.max(s.currentStreak, user.current_streak ?? 0);
+      const bestLongest = Math.max(s.longestStreak, user.longest_streak ?? 0);
+      const today = new Date();
+      const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      syncStreak(bestCurrent, bestLongest, dateStr);
+    }
   }, []);
 
   if (!user) {

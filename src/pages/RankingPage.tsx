@@ -95,9 +95,11 @@ export default function RankingPage() {
     if (user) {
       try {
         const s = getReadingStats();
+        const bestCurrent = Math.max(s.currentStreak, user.current_streak ?? 0);
+        const bestLongest = Math.max(s.longestStreak, user.longest_streak ?? 0);
         const today = new Date();
         const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-        await syncStreak(s.currentStreak, s.longestStreak, dateStr);
+        await syncStreak(bestCurrent, bestLongest, dateStr);
       } catch { /* ignore */ }
     }
     getStreakLeaderboard(20).then((data) => {
