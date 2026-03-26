@@ -8,11 +8,13 @@ import { useAuth } from "../lib/auth";
 const isWebView = (() => {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent || "";
+  // Only check UA markers — do NOT check window.Capacitor.
+  // With overrideUserAgent in capacitor.config, these markers are stripped,
+  // so isWebView will be false in our spoofed APK (which is what we want).
   return (
     /\bwv\b/i.test(ua) ||
     /WebView/i.test(ua) ||
-    (/(Android)/.test(ua) && /Version\/[\d.]+/.test(ua) && !/Chrome\/[\d.]+.*Mobile Safari/i.test(ua)) ||
-    !!(window as any).Capacitor
+    (/(Android)/.test(ua) && /Version\/[\d.]+/.test(ua) && !/Chrome\/[\d.]+.*Mobile Safari/i.test(ua))
   );
 })();
 
@@ -213,29 +215,6 @@ function queueBannerLoad(
 }
 
 // ────────────────────────────────────────────────
-// Direct iframe fallback for WebView
-// When invoke.js doesn't render, try direct iframe
-// ────────────────────────────────────────────────
-
-function tryDirectIframeFallback(
-  container: HTMLElement,
-  config: { key: string; width: number; height: number },
-) {
-  // Only attempt if container has no iframe yet
-  if (container.querySelector("iframe")) return;
-  const iframe = document.createElement("iframe");
-  iframe.setAttribute("data-aa", config.key);
-  iframe.src = `https://www.highperformanceformat.com/watchnew?key=${config.key}&type=banner&height=${config.height}&width=${config.width}`;
-  iframe.width = String(config.width);
-  iframe.height = String(config.height);
-  iframe.style.border = "none";
-  iframe.style.overflow = "hidden";
-  iframe.setAttribute("frameborder", "0");
-  iframe.setAttribute("scrolling", "no");
-  container.appendChild(iframe);
-}
-
-// ────────────────────────────────────────────────
 // Close Button (only rendered when ad has content)
 // ────────────────────────────────────────────────
 
@@ -277,17 +256,6 @@ export function AdBanner({ type, className = "" }: { type: BannerType; className
       injectedRef.current = false;
     };
   }, [type, isAdFree, dismissed]);
-
-  // WebView fallback: if invoke.js loaded but no content after 4s, try direct iframe
-  useEffect(() => {
-    if (!isWebView || !scriptLoaded || hasContent || !containerRef.current) return;
-    const timer = setTimeout(() => {
-      if (containerRef.current && !containerRef.current.querySelector("iframe")) {
-        tryDirectIframeFallback(containerRef.current, AD_CONFIGS[type]);
-      }
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, [scriptLoaded, hasContent, type]);
 
   if (isAdFree || dismissed) return null;
   // If verification completed and no content → hide entirely (no floating close button)
@@ -445,17 +413,6 @@ export function MobileStickyAd() {
       injectedRef.current = false;
     };
   }, [isAdFree, dismissed, tier]);
-
-  // WebView fallback
-  useEffect(() => {
-    if (!isWebView || !scriptLoaded || hasContent || !containerRef.current) return;
-    const timer = setTimeout(() => {
-      if (containerRef.current && !containerRef.current.querySelector("iframe")) {
-        tryDirectIframeFallback(containerRef.current, AD_CONFIGS["banner-320x50"]);
-      }
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, [scriptLoaded, hasContent]);
 
   if (isAdFree || dismissed || tier !== "mobile") return null;
   if (checked && !hasContent) return null;

@@ -19,7 +19,10 @@ const config: CapacitorConfig = {
   android: {
     backgroundColor: '#0d0d14',
     allowMixedContent: true,
-    webContentsDebuggingEnabled: false
+    webContentsDebuggingEnabled: false,
+    // Override UA to look like regular Chrome — removes "; wv" and "Version/4.0" WebView markers.
+    // Without this, ad networks (Adsterra etc.) detect WebView and refuse to serve ads.
+    overrideUserAgent: 'Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.39 Mobile Safari/537.36'
   }
 };
 
