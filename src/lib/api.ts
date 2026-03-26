@@ -472,6 +472,9 @@ const AUTH_BASE = API_BASE.replace(/\/api\/?$/, "/api");
 export async function syncStreak(current_streak: number, longest_streak: number, last_read_date: string): Promise<void> {
   const token = localStorage.getItem("kv_token");
   if (!token) return;
+  // Don't sync if local history is empty — prevents wiping server streak
+  const hasHistory = !!localStorage.getItem("komikverse_history");
+  if (!hasHistory && current_streak === 0) return;
   try {
     await fetch(`${AUTH_BASE}/auth/sync-streak`, {
       method: "POST",
