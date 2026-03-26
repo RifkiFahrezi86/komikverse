@@ -37,10 +37,15 @@ function getCached<T>(key: string): T | null {
 
 function setCache(key: string, data: unknown, ttl = CACHE_TTL) {
   responseCache.set(key, { data, expires: Date.now() + ttl });
-  // Limit cache size
   if (responseCache.size > 100) {
-    const first = responseCache.keys().next().value;
-    if (first) responseCache.delete(first);
+    const now = Date.now();
+    for (const [k, v] of responseCache.entries()) {
+      if (v.expires < now) responseCache.delete(k);
+    }
+    if (responseCache.size > 100) {
+      const first = responseCache.keys().next().value;
+      if (first) responseCache.delete(first);
+    }
   }
 }
 

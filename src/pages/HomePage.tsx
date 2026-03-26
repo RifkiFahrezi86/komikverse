@@ -7,7 +7,7 @@ import { getContinueReading, deleteComicFromHistory, getReadingStats } from "../
 import ComicCard, { UpdateCard, RecommendCard } from "../components/ComicCard";
 import ComicCardSkeleton, { UpdateCardSkeleton, RecommendCardSkeleton } from "../components/ComicCardSkeleton";
 import AdSlot from "../components/AdSlot";
-import HomeScriptAds from "../components/HomeScriptAds";
+
 
 const TYPE_TABS = [
   { key: "all", label: "Semua" },
@@ -67,12 +67,16 @@ function HorizontalScroller({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const el = ref.current;
-    if (el) {
-      checkScroll();
-      el.addEventListener("scroll", checkScroll, { passive: true });
-      return () => el.removeEventListener("scroll", checkScroll);
-    }
-  }, [children]);
+    if (!el) return;
+    checkScroll();
+    el.addEventListener("scroll", checkScroll, { passive: true });
+    const ro = new ResizeObserver(checkScroll);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", checkScroll);
+      ro.disconnect();
+    };
+  }, []);
 
   return (
     <div className="relative group/scroll">
@@ -182,9 +186,6 @@ export default function HomePage() {
 
   return (
     <div className="page-top page-bottom md:pb-12">
-      {/* Script-only ads: Popunder + Social Bar */}
-      <HomeScriptAds />
-
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
 
         {/* Banner 728x90 - Atas Homepage */}

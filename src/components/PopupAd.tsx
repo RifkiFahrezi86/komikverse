@@ -15,6 +15,7 @@ export default function PopunderAd() {
     if (isAdFree || injectedRef.current) return;
     if (sessionStorage.getItem(SESSION_KEY)) return;
     if (location.pathname.startsWith("/baca/")) return;
+    if (location.pathname.startsWith("/admin")) return;
 
     const timer = setTimeout(async () => {
       if (injectedRef.current) return;

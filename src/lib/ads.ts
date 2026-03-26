@@ -78,7 +78,8 @@ export function injectAdCode(
   // Listen for height resize messages from the iframe
   const onMessage = (e: MessageEvent) => {
     if (e.source === iframe.contentWindow && e.data?.type === "adHeight") {
-      const h = Math.min(e.data.height, 600); // cap at 600px
+      const h = Math.min(e.data.height, 600);
+      iframe.style.transition = "height 0.2s ease";
       iframe.style.height = h + "px";
     }
   };

@@ -249,7 +249,7 @@ export default function ReaderPage() {
       </div>
 
       {/* Reader content */}
-      <div className="pt-12">
+      <div className="pt-12 pb-16">
         {viewMode === "long-strip" ? (
           <div className="max-w-3xl mx-auto overflow-hidden">
             {/* Ad Slot - Reader Top */}

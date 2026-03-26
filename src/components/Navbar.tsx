@@ -21,13 +21,13 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
+    function onKey(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
         setSearchOpen(true);
       }
       if (e.key === "Escape") setSearchOpen(false);
-    };
+    }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
@@ -169,7 +169,7 @@ export default function Navbar() {
       </nav>
 
       {/* Mobile Bottom Navigation */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0f]/95 backdrop-blur-xl border-t border-white/[0.04]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0f]/95 backdrop-blur-xl border-t border-white/[0.04]" style={{ paddingBottom: 'max(0.25rem, env(safe-area-inset-bottom))' }}>
         <div className="flex items-center justify-around py-2">
           <MobileNavItem to="/" icon={<Home size={20} />} label="Home" active={isActive("/")} />
           <MobileNavItem to="/terbaru" icon={<Compass size={20} />} label="Explore" active={isActive("/terbaru")} />
