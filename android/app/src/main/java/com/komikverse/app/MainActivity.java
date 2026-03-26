@@ -61,6 +61,13 @@ public class MainActivity extends BridgeActivity {
                 settings.setSupportMultipleWindows(false);
                 settings.setJavaScriptCanOpenWindowsAutomatically(false);
 
+                // 6. Remove X-Requested-With header (WebView fingerprint used by ad networks)
+                //    Uses reflection — available on modern WebView (Chrome 105+)
+                try {
+                    settings.getClass().getMethod("setRequestedWithHeaderMode", int.class)
+                        .invoke(settings, 0); // 0 = REQUESTED_WITH_HEADER_MODE_NO_HEADER
+                } catch (Exception ignored) {}
+
             } catch (Exception ignored) {}
         });
     }
