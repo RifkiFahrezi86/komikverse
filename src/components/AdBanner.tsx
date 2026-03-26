@@ -119,28 +119,14 @@ function queueBannerLoad(
 // Ad Loaded Detection
 // Returns 'loading' | 'loaded' | 'failed'
 //
-// Key insight: when an iframe loads a REAL cross-origin ad,
-// `contentDocument` returns null (blocked by CORS).
-// When WebView renders its own error page ("Halaman web tidak
-// tersedia") inside the iframe, `contentDocument` IS accessible
-// because the error page is a local document.
-// This lets us distinguish real ads from error pages.
+// All iframes start invisible (opacity:0). On Android WebView,
+// Java intercepts sub-frame errors via onReceivedError and
+// stores failed URLs in window.__kvAdErrors. After an iframe's
+// load event + 1.5s delay, we check this set:
+//   - URL in error set → hide iframe (user never sees error page)
+//   - URL NOT in error set → reveal iframe → mark "loaded"
+// Timeout (8s) → mark "failed" → slot removed entirely.
 // ────────────────────────────────────────────────
-
-function isErrorIframe(iframe: HTMLIFrameElement): boolean {
-  const src = iframe.src || "";
-  if (!src || src === "about:blank" || src.startsWith("chrome-error://")) return true;
-  try {
-    // Cross-origin ad → contentDocument is null (CORS) → NOT an error
-    // WebView error page → contentDocument is accessible → IS an error
-    const doc = iframe.contentDocument;
-    if (doc) return true;
-  } catch (_) {
-    // SecurityError thrown → cross-origin → real ad content
-    return false;
-  }
-  return false;
-}
 
 function useAdLoaded(
   containerRef: React.RefObject<HTMLDivElement | null>,
@@ -157,44 +143,72 @@ function useAdLoaded(
       if (!settled) { settled = true; setStatus(s); }
     };
 
+    // Error URLs reported by Java WebViewClient.onReceivedError()
+    const getErrors = (): Set<string> =>
+      (window as any).__kvAdErrors || new Set<string>();
+
     const checkContent = () => {
       if (settled || !el.isConnected) return;
+      const errors = getErrors();
 
       const iframes = el.querySelectorAll("iframe");
       for (const iframe of iframes) {
-        if (isErrorIframe(iframe as HTMLIFrameElement)) {
-          (iframe as HTMLElement).style.display = "none";
+        const iframeEl = iframe as HTMLIFrameElement;
+        const src = iframeEl.src || "";
+
+        // Skip blank / error protocol iframes
+        if (!src || src === "about:blank" || src.startsWith("chrome-error://")) {
+          iframeEl.style.display = "none";
           continue;
         }
-        // Has a real cross-origin iframe → ad loaded successfully
+        if (!src.startsWith("http")) continue;
+
+        // Skip iframes whose URLs Java reported as network/HTTP errors
+        if (errors.has(src)) {
+          iframeEl.style.display = "none";
+          continue;
+        }
+
+        // Valid iframe — reveal and mark loaded
+        iframeEl.style.opacity = "1";
         mark("loaded");
         return;
       }
 
-      // Check for native ad content (images rendered by ad script)
-      const imgs = el.querySelectorAll("img[src^='http']");
-      if (imgs.length > 0) { mark("loaded"); return; }
+      // Check for native ad content (images injected by ad script)
+      if (el.querySelectorAll("img[src^='http']").length > 0) {
+        mark("loaded");
+      }
     };
 
     const observer = new MutationObserver(() => {
       el.querySelectorAll("iframe:not([data-kv-w])").forEach((iframe) => {
-        (iframe as HTMLIFrameElement).dataset.kvW = "1";
+        const iframeEl = iframe as HTMLIFrameElement;
+        iframeEl.dataset.kvW = "1";
+        // Start invisible — prevents "Halaman web tidak tersedia" flash
+        iframeEl.style.opacity = "0";
+        iframeEl.style.transition = "opacity 0.3s ease";
+
         iframe.addEventListener("load", () => {
-          // Re-check after iframe finishes loading
-          setTimeout(checkContent, 100);
+          // Delay to allow Java error reporting to arrive first
+          setTimeout(checkContent, 1500);
         });
         iframe.addEventListener("error", () => {
-          (iframe as HTMLElement).style.display = "none";
+          iframeEl.style.display = "none";
         });
       });
-      setTimeout(checkContent, 300);
     });
     observer.observe(el, { childList: true, subtree: true });
 
-    const interval = setInterval(checkContent, 2000);
+    // Listen for Java-side error reports (dispatched from onReceivedError)
+    const onAdError = () => setTimeout(checkContent, 100);
+    window.addEventListener("kv-ad-error", onAdError);
+
+    const interval = setInterval(checkContent, 2500);
     const timeout = setTimeout(() => {
       clearInterval(interval);
       observer.disconnect();
+      window.removeEventListener("kv-ad-error", onAdError);
       mark("failed");
     }, timeoutMs);
 
@@ -202,6 +216,7 @@ function useAdLoaded(
       observer.disconnect();
       clearInterval(interval);
       clearTimeout(timeout);
+      window.removeEventListener("kv-ad-error", onAdError);
     };
   }, [timeoutMs]);
 

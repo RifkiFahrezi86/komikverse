@@ -3,10 +3,14 @@ package com.komikverse.app;
 import android.os.Bundle;
 import android.view.View;
 import android.webkit.CookieManager;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import androidx.core.view.WindowCompat;
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebViewClient;
 
 public class MainActivity extends BridgeActivity {
     @Override
@@ -67,6 +71,39 @@ public class MainActivity extends BridgeActivity {
                     settings.getClass().getMethod("setRequestedWithHeaderMode", int.class)
                         .invoke(settings, 0); // 0 = REQUESTED_WITH_HEADER_MODE_NO_HEADER
                 } catch (Exception ignored) {}
+
+                // 7. Custom WebViewClient — intercept sub-frame errors and report to JS
+                //    When an ad iframe fails to load, Java tells JavaScript the URL that failed.
+                //    JavaScript then hides that iframe, preventing "Halaman web tidak tersedia".
+                webView.setWebViewClient(new BridgeWebViewClient(getBridge()) {
+                    private void reportErrorToJS(WebView view, String url) {
+                        String escaped = url.replace("\\", "\\\\").replace("'", "\\'")
+                                .replace("\n", "").replace("\r", "");
+                        view.post(() -> view.evaluateJavascript(
+                            "(window.__kvAdErrors=window.__kvAdErrors||new Set()).add('" + escaped + "');" +
+                            "window.dispatchEvent(new Event('kv-ad-error'))",
+                            null
+                        ));
+                    }
+
+                    @Override
+                    public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                        if (!request.isForMainFrame()) {
+                            reportErrorToJS(view, request.getUrl().toString());
+                            return; // suppress error page for sub-frames
+                        }
+                        super.onReceivedError(view, request, error);
+                    }
+
+                    @Override
+                    public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
+                        if (!request.isForMainFrame()) {
+                            reportErrorToJS(view, request.getUrl().toString());
+                            return;
+                        }
+                        super.onReceivedHttpError(view, request, errorResponse);
+                    }
+                });
 
             } catch (Exception ignored) {}
         });
