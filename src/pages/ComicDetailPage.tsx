@@ -280,7 +280,7 @@ export default function ComicDetailPage() {
       </div>
 
       {/* Ad Slot - Before Chapters */}
-      <AdSlot type="728x90" className="mb-4 rounded-xl overflow-hidden" />
+      <AdSlot slot="detail-before-chapters" className="mb-4 rounded-xl overflow-hidden" />
 
       {/* Chapter Section */}
       <section>
@@ -421,10 +421,10 @@ export default function ComicDetailPage() {
 
       {/* Ad Slot - Sidebar */}
       {/* Sidebar Banner 300x250 */}
-      <AdSlot type="300x250" className="mt-4 rounded-xl overflow-hidden" />
+      <AdSlot slot="detail-sidebar" className="mt-4 rounded-xl overflow-hidden" />
 
       {/* Native Banner */}
-      <AdSlot type="native" className="mt-4 rounded-xl overflow-hidden" />
+      <AdSlot slot="native-detail" className="mt-4 rounded-xl overflow-hidden" />
 
       {/* Comment Section */}
       {slug && <CommentSection comicSlug={slug} />}

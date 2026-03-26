@@ -1,53 +1,37 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../lib/auth";
+import { getAds, injectAdCode } from "../lib/ads";
 
-const AD_KEY = "0765c0653cd6aee612fcada9c290485e";
-const INVOKE_DOMAIN = "www.highperformancegate.com";
-
-/**
- * Sticky bottom banner 320x50 — khusus mobile.
- * Bisa ditutup, tidak menghalangi navigasi.
- */
 export default function MobileStickyAd() {
   const { isAdFree } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
-  const injectedRef = useRef(false);
+  const cleanupRef = useRef<(() => void) | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const [adCode, setAdCode] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (isAdFree || dismissed || injectedRef.current || !containerRef.current) return;
-    injectedRef.current = true;
-
-    const container = containerRef.current;
-
-    // Create unique container div for invoke.js to target
-    const containerId = `at-sticky-${Math.random().toString(36).slice(2, 8)}`;
-    const adDiv = document.createElement("div");
-    adDiv.id = containerId;
-    container.appendChild(adDiv);
-
-    // Set atOptions with async + container so invoke.js places ad in our div
-    (window as any).atOptions = {
-      key: AD_KEY,
-      format: "iframe",
-      height: 50,
-      width: 320,
-      params: {},
-      container: containerId,
-      async: true,
-    };
-
-    const script = document.createElement("script");
-    script.src = `https://${INVOKE_DOMAIN}/${AD_KEY}/invoke.js`;
-    container.appendChild(script);
-
-    return () => {
-      container.innerHTML = "";
-      injectedRef.current = false;
-    };
+    if (isAdFree || dismissed) return;
+    let active = true;
+    getAds().then((ads) => {
+      if (active) { setAdCode(ads["sticky-mobile"] || null); setLoaded(true); }
+    });
+    return () => { active = false; };
   }, [isAdFree, dismissed]);
 
-  if (isAdFree || dismissed) return null;
+  useEffect(() => {
+    if (isAdFree || dismissed || !loaded || !adCode || !containerRef.current) return;
+    const container = containerRef.current;
+    container.innerHTML = "";
+    cleanupRef.current = injectAdCode(container, adCode);
+    return () => {
+      if (cleanupRef.current) cleanupRef.current();
+      cleanupRef.current = null;
+      container.innerHTML = "";
+    };
+  }, [adCode, loaded, isAdFree, dismissed]);
+
+  if (isAdFree || dismissed || (loaded && !adCode)) return null;
 
   return (
     <div

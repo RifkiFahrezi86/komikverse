@@ -1,15 +1,11 @@
 import { useEffect, useRef } from "react";
 import { useAuth } from "../lib/auth";
 import { useLocation } from "react-router-dom";
+import { getAds } from "../lib/ads";
 
-const POPUNDER_SRC = "https://pl28923689.profitablecpmratenetwork.com/5a/5e/18/5a5e18adc44d72973fdb14f945055f50.js";
 const SESSION_KEY = "kv_popunder_shown";
-const DELAY_MS = 30000; // 30 detik setelah halaman dimuat
+const DELAY_MS = 30000;
 
-/**
- * Popunder ad — muncul 1x per sesi, delay 30 detik, tidak saat membaca komik.
- * Tidak merender apapun ke layar (script-only).
- */
 export default function PopunderAd() {
   const { isAdFree } = useAuth();
   const injectedRef = useRef(false);
@@ -18,19 +14,32 @@ export default function PopunderAd() {
   useEffect(() => {
     if (isAdFree || injectedRef.current) return;
     if (sessionStorage.getItem(SESSION_KEY)) return;
-
-    // Jangan tampilkan saat membaca komik
     if (location.pathname.startsWith("/baca/")) return;
 
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       if (injectedRef.current) return;
+      const ads = await getAds();
+      const code = ads["popup-global"];
+      if (!code) return;
+
       injectedRef.current = true;
       sessionStorage.setItem(SESSION_KEY, "1");
 
-      const script = document.createElement("script");
-      script.src = POPUNDER_SRC;
-      script.async = true;
-      document.body.appendChild(script);
+      // Parse and inject the ad code
+      const temp = document.createElement("div");
+      temp.innerHTML = code;
+      while (temp.firstChild) {
+        const node = temp.firstChild;
+        temp.removeChild(node);
+        if (node instanceof HTMLScriptElement) {
+          const ns = document.createElement("script");
+          for (const a of Array.from(node.attributes)) ns.setAttribute(a.name, a.value);
+          if (node.textContent && !node.src) ns.textContent = node.textContent;
+          document.body.appendChild(ns);
+        } else {
+          document.body.appendChild(node);
+        }
+      }
     }, DELAY_MS);
 
     return () => clearTimeout(timer);

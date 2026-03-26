@@ -64,7 +64,7 @@ export default function GenrePage() {
         </div>
       )}
 
-      <AdSlot type="468x60" className="mt-6 rounded-xl overflow-hidden" />
+      <AdSlot slot="browse-banner" className="mt-6 rounded-xl overflow-hidden" />
     </div>
   );
 }
