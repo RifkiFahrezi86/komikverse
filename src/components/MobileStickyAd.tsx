@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../lib/auth";
 
-const isCapacitor = typeof (window as any).Capacitor !== "undefined" || /wv|WebView/i.test(navigator.userAgent);
-
 const AD_KEY = "0765c0653cd6aee612fcada9c290485e";
 const INVOKE_DOMAIN = "www.highperformancegate.com";
 
@@ -39,7 +37,7 @@ export default function MobileStickyAd() {
     };
   }, [isAdFree, dismissed]);
 
-  if (isAdFree || dismissed || isCapacitor) return null;
+  if (isAdFree || dismissed) return null;
 
   return (
     <div

@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../lib/auth";
 
-// Kapasitor/WebView detection — Adsterra blocked in WebView
-const isCapacitor = typeof (window as any).Capacitor !== "undefined" || /wv|WebView/i.test(navigator.userAgent);
-
 // ─── Hardcoded Ad Configuration (Adsterra) ────────────────
 const BANNER_ADS = {
   "728x90": { key: "5c01a1d15d1a70394faba93bab910d76", width: 728, height: 90 },
@@ -140,7 +137,7 @@ export default function AdSlot({ type, className = "" }: AdSlotProps) {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    if (isAdFree || dismissed || isCapacitor || !containerRef.current) return;
+    if (isAdFree || dismissed || !containerRef.current) return;
     const container = containerRef.current;
     container.innerHTML = "";
 
@@ -157,7 +154,7 @@ export default function AdSlot({ type, className = "" }: AdSlotProps) {
     };
   }, [type, isAdFree, dismissed]);
 
-  if (isAdFree || dismissed || isCapacitor) return null;
+  if (isAdFree || dismissed) return null;
 
   const ad = type !== "native" ? BANNER_ADS[type] : null;
 
