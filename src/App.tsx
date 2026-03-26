@@ -38,7 +38,6 @@ const RankingPage = lazyRetry(() => import("./pages/RankingPage"));
 const AdminLayout = lazyRetry(() => import("./layouts/AdminLayout"));
 const AdminDashboardPage = lazyRetry(() => import("./pages/admin/DashboardPage"));
 const AdminCommentsPage = lazyRetry(() => import("./pages/admin/CommentsPage"));
-const AdminAdsPage = lazyRetry(() => import("./pages/admin/AdsPage"));
 const AdminUsersPage = lazyRetry(() => import("./pages/admin/UsersPage"));
 const AdminSettingsPage = lazyRetry(() => import("./pages/admin/SettingsPage"));
 
@@ -88,7 +87,6 @@ const router = createBrowserRouter([
     children: [
       { path: "/admin", element: <SuspenseWrap><AdminDashboardPage /></SuspenseWrap> },
       { path: "/admin/comments", element: <SuspenseWrap><AdminCommentsPage /></SuspenseWrap> },
-      { path: "/admin/ads", element: <SuspenseWrap><AdminAdsPage /></SuspenseWrap> },
       { path: "/admin/users", element: <SuspenseWrap><AdminUsersPage /></SuspenseWrap> },
       { path: "/admin/settings", element: <SuspenseWrap><AdminSettingsPage /></SuspenseWrap> },
     ],

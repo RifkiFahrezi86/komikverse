@@ -21,7 +21,7 @@ import { getComicDetail, getProvider, trackView, getViewCount, formatViews } fro
 import { addBookmark, removeBookmark, isBookmarked } from "../lib/bookmark";
 import { getLastReadForComic, getReadChapters } from "../lib/history";
 import CommentSection from "../components/CommentSection";
-import AdSlot from "../components/AdSlot";
+import { ResponsiveBanner, AdBanner, NativeAd } from "../components/AdBanner";
 
 function extractChapterSlug(href: string): string {
   return href.replace(/^\/(chapter)\//, "").replace(/^\//, "");
@@ -279,8 +279,8 @@ export default function ComicDetailPage() {
         </div>
       </div>
 
-      {/* Ad Slot - Before Chapters */}
-      <AdSlot name="detail-before-chapters" className="mb-4 rounded-xl overflow-hidden" />
+      {/* Ad - Before Chapters */}
+      <ResponsiveBanner className="mb-4 rounded-xl overflow-hidden" />
 
       {/* Chapter Section */}
       <section>
@@ -419,11 +419,13 @@ export default function ComicDetailPage() {
         })()}
       </section>
 
-      {/* Ad Slot - Sidebar */}
-      <AdSlot name="detail-sidebar" className="mt-4 rounded-xl overflow-hidden" />
+      {/* Ad - Sidebar */}
+      <div className="mt-4 flex justify-center">
+        <AdBanner type="banner-300x250" className="rounded-xl overflow-hidden" />
+      </div>
 
-      {/* Native Banner - Detail */}
-      <AdSlot name="native-detail" className="mt-4 rounded-xl overflow-hidden" />
+      {/* Native Banner */}
+      <NativeAd className="mt-4 rounded-xl overflow-hidden" />
 
       {/* Comment Section */}
       {slug && <CommentSection comicSlug={slug} />}

@@ -16,7 +16,7 @@ import {
 import type { Chapter, ChapterData } from "../lib/api";
 import { getChapterImages, getComicDetail } from "../lib/api";
 import { recordRead } from "../lib/history";
-import AdSlot from "../components/AdSlot";
+import { ResponsiveBanner, AdBanner } from "../components/AdBanner";
 
 // Preload next N images for smoother scrolling
 function useImagePreloader(panels: string[], currentIndex: number, ahead = 5) {
@@ -252,8 +252,8 @@ export default function ReaderPage() {
       <div className="pt-12">
         {viewMode === "long-strip" ? (
           <div className="max-w-3xl mx-auto">
-            {/* Ad Slot - Reader Top */}
-            <AdSlot name="reader-top" className="mb-2" />
+            {/* Ad - Reader Top */}
+            <ResponsiveBanner className="mb-2" />
             {panels.map((src, i) => (
               <React.Fragment key={i}>
                 <img
@@ -279,12 +279,12 @@ export default function ReaderPage() {
                 />
                 {/* Ad between images every 10 panels */}
                 {(i + 1) % 10 === 0 && i < panels.length - 1 && (
-                  <AdSlot name="reader-between" className="my-2" />
+                  <AdBanner type="banner-468x60" className="my-2 flex justify-center" />
                 )}
               </React.Fragment>
             ))}
-            {/* Ad Slot - Reader Bottom */}
-            <AdSlot name="reader-bottom" className="mt-2" />
+            {/* Ad - Reader Bottom */}
+            <ResponsiveBanner className="mt-2" />
           </div>
         ) : (
           <div className="flex items-center justify-center min-h-screen px-4">
