@@ -188,6 +188,9 @@ export default function HomePage() {
     <div className="page-top page-bottom md:pb-12">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
 
+        {/* Banner 728x90 - Atas Homepage */}
+        <AdSlot slot="home-top" className="mb-6 rounded-xl overflow-hidden" />
+
         {enrichFailed && (
           <div className="mb-4 px-3 py-2 rounded-lg bg-yellow-500/5 border border-yellow-500/10 text-[11px] font-body text-yellow-400/80 text-center">
             Sebagian data dari provider lain gagal dimuat. Menampilkan data utama saja.
@@ -390,8 +393,8 @@ export default function HomePage() {
           )}
         </section>
 
-        <AdSlot slot="home-bottom" className="mb-6 rounded-xl overflow-hidden" />
-        <AdSlot slot="sticky-mobile" className="mb-6 rounded-xl overflow-hidden md:hidden" />
+        <AdSlot slot="home-bottom-1" className="mb-6 rounded-xl overflow-hidden" />
+        <AdSlot slot="home-bottom-2" className="mb-6 rounded-xl overflow-hidden" />
       </div>
     </div>
   );
