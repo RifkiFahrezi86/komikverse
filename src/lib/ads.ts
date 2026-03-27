@@ -9,22 +9,31 @@ const API_BASE =
   import.meta.env.VITE_API_BASE ||
   atob("aHR0cHM6Ly9rb21pa3ZlcnNlLWFwaS1hbWJlci52ZXJjZWwuYXBwL2FwaQ==");
 
-// ─── Single Global Cache ──────────────────────────────────
+// ─── Single Global Cache with TTL ─────────────────────────
 let adsCache: Record<string, string> | null = null;
 let adsFetchPromise: Promise<Record<string, string>> | null = null;
+let adsCacheExpires = 0;
+const ADS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export function getAds(): Promise<Record<string, string>> {
-  if (adsCache) return Promise.resolve(adsCache);
+  if (adsCache && Date.now() < adsCacheExpires) return Promise.resolve(adsCache);
   if (adsFetchPromise) return adsFetchPromise;
+
+  // Clear stale cache
+  adsCache = null;
 
   adsFetchPromise = fetch(`${API_BASE}/ads`)
     .then((r) => r.json())
     .then((data) => {
       adsCache = data.ads || {};
+      adsCacheExpires = Date.now() + ADS_CACHE_TTL;
+      adsFetchPromise = null;
       return adsCache!;
     })
     .catch(() => {
       adsCache = {};
+      adsCacheExpires = Date.now() + ADS_CACHE_TTL;
+      adsFetchPromise = null;
       return adsCache!;
     });
 
