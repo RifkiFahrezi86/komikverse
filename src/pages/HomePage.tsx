@@ -188,14 +188,14 @@ export default function HomePage() {
     <div className="page-top page-bottom md:pb-12">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
 
-        {/* Banner 728x90 - Atas Homepage */}
-        <AdSlot slot="home-top" className="mb-6 rounded-xl overflow-hidden" />
-
         {enrichFailed && (
           <div className="mb-4 px-3 py-2 rounded-lg bg-yellow-500/5 border border-yellow-500/10 text-[11px] font-body text-yellow-400/80 text-center">
             Sebagian data dari provider lain gagal dimuat. Menampilkan data utama saja.
           </div>
         )}
+
+        {/* ─── Native Banner (menyatu dengan konten) ─── */}
+        <AdSlot slot="native-home" className="mb-10" />
 
         {/* ─── Lanjutkan Membaca Section ─── */}
         {continueList.length > 0 && (
@@ -261,9 +261,6 @@ export default function HomePage() {
             </HorizontalScroller>
           </section>
         )}
-
-        {/* ─── Native Banner (menyatu dengan konten) ─── */}
-        <AdSlot slot="native-home" className="mb-10" />
 
         {/* ─── Rekomendasi Section ─── */}
         <section className="mb-10">
