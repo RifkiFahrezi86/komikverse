@@ -19,7 +19,7 @@ import { recordRead } from "../lib/history";
 import AdSlot from "../components/AdSlot";
 
 // Preload next N images for smoother scrolling
-function useImagePreloader(panels: string[], currentIndex: number, ahead = 5) {
+function useImagePreloader(panels: string[], chapterKey: string, currentIndex: number, ahead = 5) {
   useEffect(() => {
     if (panels.length === 0) return;
     const start = Math.max(0, currentIndex);
@@ -27,12 +27,79 @@ function useImagePreloader(panels: string[], currentIndex: number, ahead = 5) {
     const imgs: HTMLImageElement[] = [];
     for (let i = start; i < end; i++) {
       const img = new Image();
+      img.referrerPolicy = "no-referrer";
       img.src = panels[i];
       imgs.push(img);
     }
-    return () => { imgs.forEach(img => { img.src = ""; }); };
-  }, [panels, currentIndex, ahead]);
+    return () => { imgs.forEach(img => { img.src = ""; img.onload = null; }); };
+  }, [panels, chapterKey, currentIndex, ahead]);
 }
+
+// Single image component with loading skeleton
+const ReaderImage = React.memo(function ReaderImage({
+  src,
+  alt,
+  eager,
+}: {
+  src: string;
+  alt: string;
+  eager: boolean;
+}) {
+  const [loaded, setLoaded] = useState(false);
+  const [errCount, setErrCount] = useState(0);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  // Reset state when src changes
+  useEffect(() => {
+    setLoaded(false);
+    setErrCount(0);
+  }, [src]);
+
+  // Check if already cached
+  useEffect(() => {
+    if (imgRef.current?.complete && imgRef.current.naturalHeight > 0) {
+      setLoaded(true);
+    }
+  }, [src]);
+
+  return (
+    <div className="relative w-full" style={{ minHeight: loaded ? undefined : '50vh' }}>
+      {!loaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#12121a]">
+          <Loader2 size={24} className="text-[#f97316]/60 animate-spin" />
+        </div>
+      )}
+      <img
+        ref={imgRef}
+        src={src}
+        alt={alt}
+        loading={eager ? "eager" : "lazy"}
+        decoding="async"
+        className={`w-full max-w-full h-auto block select-none transition-opacity duration-200 ${
+          loaded ? 'opacity-100' : 'opacity-0'
+        }`}
+        draggable={false}
+        referrerPolicy="no-referrer"
+        onLoad={() => setLoaded(true)}
+        onError={(e) => {
+          const img = e.currentTarget;
+          if (errCount < 3) {
+            const next = errCount + 1;
+            setErrCount(next);
+            const base = src.split("?")[0];
+            if (next === 3) {
+              img.src = `https://wsrv.nl/?url=${encodeURIComponent(base)}&default=1`;
+            } else {
+              img.src = `${base}?retry=${next}&t=${Date.now()}`;
+            }
+          } else {
+            setLoaded(true); // show broken image rather than infinite spinner
+          }
+        }}
+      />
+    </div>
+  );
+});
 
 function extractChapterSlug(href: string): string {
   return href.replace(/^\/(chapter)\//, "").replace(/^\//, "");
@@ -96,6 +163,7 @@ export default function ReaderPage() {
     if (!slug) return;
     setLoading(true);
     setError("");
+    setChapterData(null); // Clear old chapter data to prevent stale images
     getChapterImages(slug)
       .then((res) => {
         if (res.data && res.data.length > 0) {
@@ -171,7 +239,7 @@ export default function ReaderPage() {
   const panels = chapterData?.panel || [];
 
   // Preload upcoming images (must be called before any early return)
-  useImagePreloader(panels, viewMode === "single" ? currentPage : 0, viewMode === "single" ? 3 : 8);
+  useImagePreloader(panels, slug || "", viewMode === "single" ? currentPage : 0, viewMode === "single" ? 3 : 8);
 
   if (loading) {
     return (
@@ -255,28 +323,11 @@ export default function ReaderPage() {
             {/* Ad Slot - Reader Top */}
             <AdSlot slot="reader-top" className="mb-2" />
             {panels.map((src, i) => (
-              <React.Fragment key={i}>
-                <img
+              <React.Fragment key={`${slug}-${i}`}>
+                <ReaderImage
                   src={src}
                   alt={`Panel ${i + 1}`}
-                  loading={i < 3 ? "eager" : "lazy"}
-                  decoding="async"
-                  className="w-full max-w-full h-auto block select-none"
-                  draggable={false}
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    const img = e.currentTarget;
-                    const attempt = parseInt(img.dataset.retry || "0", 10);
-                    if (attempt < 3) {
-                      img.dataset.retry = String(attempt + 1);
-                      const base = src.split("?")[0];
-                      if (attempt === 2) {
-                        img.src = `https://wsrv.nl/?url=${encodeURIComponent(base)}&default=1`;
-                      } else {
-                        img.src = `${base}?retry=${attempt + 1}&t=${Date.now()}`;
-                      }
-                    }
-                  }}
+                  eager={i < 3}
                 />
                 {/* Ad between images every 10 panels */}
                 {(i + 1) % 10 === 0 && i < panels.length - 1 && (
@@ -297,24 +348,11 @@ export default function ReaderPage() {
               <ChevronLeft size={20} />
             </button>
 
-            <img
+            <ReaderImage
+              key={`${slug}-single-${currentPage}`}
               src={panels[currentPage]}
               alt={`Panel ${currentPage + 1}`}
-              className="max-h-[90vh] max-w-full object-contain"
-              referrerPolicy="no-referrer"
-              onError={(e) => {
-                const img = e.currentTarget;
-                const attempt = parseInt(img.dataset.retry || "0", 10);
-                if (attempt < 3) {
-                  img.dataset.retry = String(attempt + 1);
-                  const base = panels[currentPage].split("?")[0];
-                  if (attempt === 2) {
-                    img.src = `https://wsrv.nl/?url=${encodeURIComponent(base)}&default=1`;
-                  } else {
-                    img.src = `${base}?retry=${attempt + 1}&t=${Date.now()}`;
-                  }
-                }
-              }}
+              eager={true}
             />
 
             <button
