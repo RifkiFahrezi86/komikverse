@@ -178,36 +178,8 @@ function buildUrl(endpoint: string, provider = currentProvider): string {
 const FETCH_TIMEOUT = 8000;
 
 async function fetchApi<T>(endpoint: string): Promise<ApiResponse<T>> {
-  const cacheKey = `${endpoint}|${currentProvider}`;
-  const cached = getCached<ApiResponse<T>>(cacheKey);
-  if (cached) return cached;
-
-  // Deduplicate identical in-flight requests
-  if (inflight.has(cacheKey)) return inflight.get(cacheKey) as Promise<ApiResponse<T>>;
-
-  const promise = (async () => {
-    const url = buildUrl(endpoint);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
-    try {
-      const authHeaders = await generateAuthHeaders();
-      const res = await fetch(url, {
-        signal: controller.signal,
-        headers: { ...authHeaders },
-      });
-      if (res.status === 429) throw new Error("Terlalu banyak permintaan. Coba lagi nanti.");
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const data: ApiResponse<T> = await res.json();
-      setCache(cacheKey, data);
-      return data;
-    } finally {
-      clearTimeout(timeoutId);
-      inflight.delete(cacheKey);
-    }
-  })();
-
-  inflight.set(cacheKey, promise);
-  return promise;
+  // Delegate to fetchApiWithProvider which handles Kiryuu direct API
+  return fetchApiWithProvider<T>(endpoint, currentProvider);
 }
 
 async function fetchApiWithProvider<T>(endpoint: string, provider: string): Promise<ApiResponse<T>> {
@@ -218,6 +190,18 @@ async function fetchApiWithProvider<T>(endpoint: string, provider: string): Prom
   if (inflight.has(cacheKey)) return inflight.get(cacheKey) as Promise<ApiResponse<T>>;
 
   const promise = (async () => {
+    // For Kiryuu: call WP REST API directly from browser (Cloudflare blocks Vercel IPs)
+    if (provider === "kiryuu") {
+      try {
+        const { kiryuuDirectFetch } = await import("./kiryuuApi");
+        const directResult = await kiryuuDirectFetch<T>(endpoint);
+        if (directResult) {
+          setCache(cacheKey, directResult);
+          return directResult;
+        }
+      } catch { /* fall through to backend */ }
+    }
+
     const url = buildUrl(endpoint, provider);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
