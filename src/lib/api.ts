@@ -11,7 +11,7 @@ let currentProvider = (() => {
 export const PROVIDERS = [
   { id: "shinigami", name: "Shinigami", icon: "🔮" },
   { id: "komiku", name: "Komiku", icon: "📚" },
-  { id: "kiryuu", name: "Kiryuu", icon: "⚔️" },
+  { id: "komikapk", name: "KomikAPK", icon: "📱" },
 ] as const;
 
 export function getProvider(): string {
@@ -178,7 +178,6 @@ function buildUrl(endpoint: string, provider = currentProvider): string {
 const FETCH_TIMEOUT = 8000;
 
 async function fetchApi<T>(endpoint: string): Promise<ApiResponse<T>> {
-  // Delegate to fetchApiWithProvider which handles Kiryuu direct API
   return fetchApiWithProvider<T>(endpoint, currentProvider);
 }
 
@@ -190,18 +189,6 @@ async function fetchApiWithProvider<T>(endpoint: string, provider: string): Prom
   if (inflight.has(cacheKey)) return inflight.get(cacheKey) as Promise<ApiResponse<T>>;
 
   const promise = (async () => {
-    // For Kiryuu: call WP REST API directly from browser (Cloudflare blocks Vercel IPs)
-    if (provider === "kiryuu") {
-      try {
-        const { kiryuuDirectFetch } = await import("./kiryuuApi");
-        const directResult = await kiryuuDirectFetch<T>(endpoint);
-        if (directResult) {
-          setCache(cacheKey, directResult);
-          return directResult;
-        }
-      } catch { /* fall through to backend */ }
-    }
-
     const url = buildUrl(endpoint, provider);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
