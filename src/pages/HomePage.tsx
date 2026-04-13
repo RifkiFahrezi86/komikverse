@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, ChevronLeft, TrendingUp, Sparkles, Clock, Play, Trash2, Heart } from "lucide-react";
 import type { Comic } from "../lib/api";
-import { getPopular, getLatest, getRecommended, getPopularMore, getLatestMore, getRecommendedMore, getComicsByGenre } from "../lib/api";
+import { getPopular, getLatest, getRecommended, getComicsByGenre } from "../lib/api";
 import { getContinueReading, deleteComicFromHistory, getReadingStats } from "../lib/history";
 import ComicCard, { UpdateCard, RecommendCard } from "../components/ComicCard";
 import ComicCardSkeleton, { UpdateCardSkeleton, RecommendCardSkeleton } from "../components/ComicCardSkeleton";
@@ -108,7 +108,6 @@ export default function HomePage() {
   const [latest, setLatest] = useState<Comic[]>([]);
   const [recommended, setRecommended] = useState<Comic[]>([]);
   const [loading, setLoading] = useState(true);
-  const [enrichFailed, setEnrichFailed] = useState(false);
   const [recTab, setRecTab] = useState("all");
   const [popTab, setPopTab] = useState("all");
   const [continueList, setContinueList] = useState(() => getContinueReading());
@@ -139,7 +138,6 @@ export default function HomePage() {
 
   useEffect(() => {
     async function load() {
-      // Phase 1: Fast load from primary provider (Shinigami)
       try {
         const [popRes, latRes, recRes] = await Promise.all([
           getPopular(),
@@ -154,29 +152,6 @@ export default function HomePage() {
       } finally {
         setLoading(false);
       }
-
-      // Phase 2: Enrich with other providers in background
-      try {
-        const [morePop, moreLat, moreRec] = await Promise.all([
-          getPopularMore(),
-          getLatestMore(),
-          getRecommendedMore(),
-        ]);
-        const mergeUnique = (existing: Comic[], more: Comic[]): Comic[] => {
-          const seen = new Set(existing.map(c => c.title.toLowerCase().replace(/[^a-z0-9]/g, "")));
-          const novel = more.filter(c => {
-            const key = c.title.toLowerCase().replace(/[^a-z0-9]/g, "");
-            return !seen.has(key);
-          });
-          return novel.length > 0 ? [...existing, ...novel] : existing;
-        };
-        if (morePop.length > 0) setPopular(prev => mergeUnique(prev, morePop));
-        if (moreLat.length > 0) setLatest(prev => mergeUnique(prev, moreLat));
-        if (moreRec.length > 0) setRecommended(prev => mergeUnique(prev, moreRec));
-      } catch {
-        // Background enrichment failed — show subtle indicator
-        setEnrichFailed(true);
-      }
     }
     load();
   }, []);
@@ -190,12 +165,6 @@ export default function HomePage() {
 
         {/* Banner 728x90 - Atas Homepage */}
         <AdSlot slot="home-top" className="mb-6 rounded-xl overflow-hidden" />
-
-        {enrichFailed && (
-          <div className="mb-4 px-3 py-2 rounded-lg bg-yellow-500/5 border border-yellow-500/10 text-[11px] font-body text-yellow-400/80 text-center">
-            Sebagian data dari provider lain gagal dimuat. Menampilkan data utama saja.
-          </div>
-        )}
 
         {/* ─── Native Banner (menyatu dengan konten) ─── */}
         <AdSlot slot="native-home" className="mb-10" />

@@ -164,7 +164,9 @@ export default function ReaderPage() {
     setLoading(true);
     setError("");
     setChapterData(null); // Clear old chapter data to prevent stale images
-    getChapterImages(slug)
+    // Find the chapter's tagged provider for more accurate fetching
+    const currentCh = chapters.find((ch) => extractChapterSlug(ch.href) === slug);
+    getChapterImages(slug, currentCh?.provider)
       .then((res) => {
         if (res.data && res.data.length > 0) {
           setChapterData(res.data[0]);

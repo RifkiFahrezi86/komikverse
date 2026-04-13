@@ -167,6 +167,7 @@ function normalizeChapter(raw: any): Chapter {
     href: raw.href || "",
     date: raw.date,
     number: raw.number,
+    provider: raw.provider,
   };
 }
 
@@ -241,55 +242,24 @@ async function fetchAllProviders(endpoint: string): Promise<Comic[]> {
   return all;
 }
 
-// Homepage functions — use primary provider (Shinigami) for fast loading
-// Phase 2 enrichment from other providers is handled by the *More() helpers below
+// All homepage/listing functions fetch from all 3 providers in parallel and merge
 export async function getLatest(page = 1): Promise<ApiResponse<Comic[]>> {
-  return fetchApiWithProvider<Comic[]>(`/terbaru?page=${page}`, "shinigami");
+  const data = await fetchAllProviders(`/terbaru?page=${page}`);
+  return { status: "Ok", data };
 }
 
 export async function getPopular(): Promise<ApiResponse<Comic[]>> {
-  return fetchApiWithProvider<Comic[]>("/popular", "shinigami");
+  const data = await fetchAllProviders("/popular");
+  return { status: "Ok", data };
 }
 
 export async function getRecommended(): Promise<ApiResponse<Comic[]>> {
-  return fetchApiWithProvider<Comic[]>("/recommended", "shinigami");
+  const data = await fetchAllProviders("/recommended");
+  return { status: "Ok", data };
 }
 
-// Fetch comics from secondary providers (for background enrichment)
-async function fetchSecondaryProviders(endpoint: string): Promise<Comic[]> {
-  const others = PROVIDERS.filter(p => p.id !== "shinigami");
-  const results = await Promise.allSettled(
-    others.map(async (p) => {
-      try {
-        const res = await fetchApiWithProvider<Comic[]>(endpoint, p.id);
-        return (res.data || []).map((raw) => ({ ...normalizeComic(raw), _provider: p.id }));
-      } catch {
-        return [];
-      }
-    })
-  );
-  const all: Comic[] = [];
-  for (const r of results) {
-    if (r.status === "fulfilled") all.push(...r.value);
-  }
-  return all;
-}
-
-export async function getPopularMore(): Promise<Comic[]> {
-  return fetchSecondaryProviders("/popular");
-}
-
-// Fetch popular comics from ALL providers (for ranking page)
 export async function getAllPopular(): Promise<Comic[]> {
   return fetchAllProviders("/popular");
-}
-
-export async function getLatestMore(): Promise<Comic[]> {
-  return fetchSecondaryProviders("/terbaru?page=1");
-}
-
-export async function getRecommendedMore(): Promise<Comic[]> {
-  return fetchSecondaryProviders("/recommended");
 }
 
 export async function searchComics(keyword: string): Promise<ApiResponse<Comic[]>> {
@@ -333,9 +303,9 @@ export async function getComicDetail(slug: string): Promise<ApiResponse<ComicDet
   throw new Error("Comic not found in any provider");
 }
 
-export async function getChapterImages(slug: string): Promise<ApiResponse<ChapterData[]>> {
-  // Try current provider first for fast response
-  const primary = currentProvider;
+export async function getChapterImages(slug: string, chapterProvider?: string): Promise<ApiResponse<ChapterData[]>> {
+  // Use chapter's tagged provider first, then currentProvider, then try others
+  const primary = chapterProvider || currentProvider;
   try {
     const res = await fetchApiWithProvider<ChapterData[]>(`/read/${slug}`, primary);
     if (res.data && res.data.length > 0 && res.data[0]?.panel?.length > 0) return res;
@@ -358,13 +328,31 @@ export async function getChapterImages(slug: string): Promise<ApiResponse<Chapte
 }
 
 export async function getGenres(): Promise<ApiResponse<Genre[]>> {
-  // Use current provider only for speed — no need to merge all 3
-  return fetchApiWithProvider<Genre[]>("/genre", currentProvider);
+  // Merge genres from all providers, deduplicate by normalized title
+  const results = await Promise.allSettled(
+    PROVIDERS.map(async (p) => {
+      try {
+        const res = await fetchApiWithProvider<Genre[]>("/genre", p.id);
+        return res.data || [];
+      } catch { return []; }
+    })
+  );
+  const all: Genre[] = [];
+  const seen = new Set<string>();
+  for (const r of results) {
+    if (r.status === "fulfilled") {
+      for (const g of r.value) {
+        const key = g.title.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (!seen.has(key)) { seen.add(key); all.push(g); }
+      }
+    }
+  }
+  return { status: "Ok", data: all };
 }
 
 export async function getComicsByGenre(slug: string, page = 1): Promise<ApiResponse<Comic[]>> {
-  // Use current provider only for speed
-  return fetchApiWithProvider<Comic[]>(`/genre/${slug}?page=${page}`, currentProvider);
+  const data = await fetchAllProviders(`/genre/${slug}?page=${page}`);
+  return { status: "Ok", data };
 }
 
 // ─── View Tracking ───
