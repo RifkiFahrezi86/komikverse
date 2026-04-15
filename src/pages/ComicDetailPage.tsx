@@ -399,11 +399,6 @@ export default function ComicDetailPage() {
                               Terakhir
                             </span>
                           )}
-                          {ch.provider && ch.provider !== currentProvider && (
-                            <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-white/[0.06] text-[#8b8ba0] border border-white/[0.06]">
-                              {ch.provider === 'shinigami' ? '🔮' : ch.provider === 'komiku' ? '📚' : '⚔️'} {ch.provider}
-                            </span>
-                          )}
                         </p>
                       </div>
                       {ch.date && (
