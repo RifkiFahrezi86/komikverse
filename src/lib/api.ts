@@ -24,9 +24,35 @@ export function setProvider(provider: string) {
 }
 
 // In-memory response cache with TTL
-const responseCache = new Map<string, { data: unknown; expires: number }>();
+interface CacheEntry {
+  data: unknown;
+  expires: number;
+}
+
+interface PersistentCacheEntry extends CacheEntry {
+  staleUntil: number;
+  updatedAt: number;
+}
+
+interface CachePolicy {
+  ttl: number;
+  staleTtl: number;
+}
+
+interface PersistentCacheIndexEntry {
+  key: string;
+  staleUntil: number;
+  updatedAt: number;
+}
+
+const responseCache = new Map<string, CacheEntry>();
 const CACHE_TTL = 3 * 60 * 1000; // 3 minutes
+const STALE_CACHE_TTL = 12 * 60 * 60 * 1000; // 12 hours
 const inflight = new Map<string, Promise<unknown>>();
+const PERSISTENT_CACHE_PREFIX = "kv_api_cache_v2:";
+const PERSISTENT_CACHE_INDEX_KEY = "kv_api_cache_index_v2";
+const MAX_PERSISTENT_CACHE_ENTRIES = 60;
+const MAX_PERSISTENT_CACHE_BYTES = 80_000;
 
 function getCached<T>(key: string): T | null {
   const entry = responseCache.get(key);
@@ -46,6 +72,150 @@ function setCache(key: string, data: unknown, ttl = CACHE_TTL) {
       const first = responseCache.keys().next().value;
       if (first) responseCache.delete(first);
     }
+  }
+}
+
+function getPersistentStorage(): Storage | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function readPersistentCacheIndex(): PersistentCacheIndexEntry[] {
+  const storage = getPersistentStorage();
+  if (!storage) return [];
+  try {
+    const raw = storage.getItem(PERSISTENT_CACHE_INDEX_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((entry): entry is PersistentCacheIndexEntry => (
+      !!entry
+      && typeof entry.key === "string"
+      && typeof entry.staleUntil === "number"
+      && typeof entry.updatedAt === "number"
+    ));
+  } catch {
+    return [];
+  }
+}
+
+function writePersistentCacheIndex(entries: PersistentCacheIndexEntry[]) {
+  const storage = getPersistentStorage();
+  if (!storage) return;
+  try {
+    storage.setItem(PERSISTENT_CACHE_INDEX_KEY, JSON.stringify(entries));
+  } catch {
+    // Ignore storage write failures.
+  }
+}
+
+function removePersistentCache(key: string) {
+  const storage = getPersistentStorage();
+  if (!storage) return;
+  try {
+    storage.removeItem(`${PERSISTENT_CACHE_PREFIX}${key}`);
+    writePersistentCacheIndex(readPersistentCacheIndex().filter((entry) => entry.key !== key));
+  } catch {
+    // Ignore storage delete failures.
+  }
+}
+
+function prunePersistentCache() {
+  const storage = getPersistentStorage();
+  if (!storage) return;
+
+  const now = Date.now();
+  const active = readPersistentCacheIndex()
+    .filter((entry) => {
+      if (entry.staleUntil <= now) {
+        storage.removeItem(`${PERSISTENT_CACHE_PREFIX}${entry.key}`);
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+
+  while (active.length > MAX_PERSISTENT_CACHE_ENTRIES) {
+    const oldest = active.pop();
+    if (oldest) storage.removeItem(`${PERSISTENT_CACHE_PREFIX}${oldest.key}`);
+  }
+
+  writePersistentCacheIndex(active);
+}
+
+function readPersistentCacheEntry(key: string): PersistentCacheEntry | null {
+  const storage = getPersistentStorage();
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(`${PERSISTENT_CACHE_PREFIX}${key}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PersistentCacheEntry>;
+    if (
+      typeof parsed !== "object"
+      || parsed === null
+      || typeof parsed.expires !== "number"
+      || typeof parsed.staleUntil !== "number"
+      || typeof parsed.updatedAt !== "number"
+      || !("data" in parsed)
+    ) {
+      removePersistentCache(key);
+      return null;
+    }
+    if (parsed.staleUntil <= Date.now()) {
+      removePersistentCache(key);
+      return null;
+    }
+    return parsed as PersistentCacheEntry;
+  } catch {
+    removePersistentCache(key);
+    return null;
+  }
+}
+
+function getPersistentCached<T>(key: string, allowStale = false): { data: T; remainingTtl: number } | null {
+  const entry = readPersistentCacheEntry(key);
+  if (!entry) return null;
+  const now = Date.now();
+  if (entry.expires > now) {
+    return { data: entry.data as T, remainingTtl: entry.expires - now };
+  }
+  if (allowStale) {
+    return { data: entry.data as T, remainingTtl: 0 };
+  }
+  return null;
+}
+
+function setPersistentCache(key: string, data: unknown, policy: CachePolicy) {
+  const storage = getPersistentStorage();
+  if (!storage) return;
+
+  prunePersistentCache();
+
+  const now = Date.now();
+  const entry: PersistentCacheEntry = {
+    data,
+    expires: now + policy.ttl,
+    staleUntil: now + policy.staleTtl,
+    updatedAt: now,
+  };
+
+  try {
+    const serialized = JSON.stringify(entry);
+    if (serialized.length > MAX_PERSISTENT_CACHE_BYTES) {
+      removePersistentCache(key);
+      return;
+    }
+
+    storage.setItem(`${PERSISTENT_CACHE_PREFIX}${key}`, serialized);
+    const next = readPersistentCacheIndex().filter((item) => item.key !== key);
+    next.unshift({ key, staleUntil: entry.staleUntil, updatedAt: entry.updatedAt });
+    writePersistentCacheIndex(next);
+    prunePersistentCache();
+  } catch {
+    // Ignore storage quota or serialization failures.
   }
 }
 
@@ -177,6 +347,246 @@ function buildUrl(endpoint: string, provider = currentProvider): string {
 }
 
 const FETCH_TIMEOUT = 8000;
+const SHINIGAMI_API_BASE = "https://api.shngm.io/v1";
+
+function getRouteName(endpoint: string): string {
+  return endpoint.replace(/^\//, "").split("?")[0].split("/")[0] || "";
+}
+
+function getEndpointSlug(endpoint: string): string {
+  const parts = endpoint.replace(/^\//, "").split("?")[0].split("/").filter(Boolean);
+  return parts[1] || "";
+}
+
+function getEndpointQuery(endpoint: string): URLSearchParams {
+  const queryIndex = endpoint.indexOf("?");
+  return new URLSearchParams(queryIndex >= 0 ? endpoint.slice(queryIndex + 1) : "");
+}
+
+function getCachePolicy(endpoint: string): CachePolicy {
+  switch (getRouteName(endpoint)) {
+    case "genre":
+      return { ttl: 10 * 60 * 1000, staleTtl: 24 * 60 * 60 * 1000 };
+    case "recommended":
+    case "popular":
+    case "detail":
+      return { ttl: 5 * 60 * 1000, staleTtl: 12 * 60 * 60 * 1000 };
+    case "terbaru":
+    case "search":
+      return { ttl: 2 * 60 * 1000, staleTtl: 6 * 60 * 60 * 1000 };
+    case "read":
+      return { ttl: 10 * 60 * 1000, staleTtl: 24 * 60 * 60 * 1000 };
+    default:
+      return { ttl: CACHE_TTL, staleTtl: STALE_CACHE_TTL };
+  }
+}
+
+function canUseDirectShinigami(endpoint: string): boolean {
+  return ["terbaru", "popular", "recommended", "search", "genre", "read"].includes(getRouteName(endpoint));
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getShinigamiTypeFromCountry(countryId: any): string {
+  const normalized = String(countryId || "").toUpperCase();
+  if (normalized === "KR") return "Manhwa";
+  if (normalized === "CN") return "Manhua";
+  return "Manga";
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resolveShinigamiComicType(raw: any): string {
+  const countryId = String(raw.country_id || "").toUpperCase();
+  if (countryId === "KR") return "Manhwa";
+  if (countryId === "CN") return "Manhua";
+  if (countryId === "JP") return "Manga";
+
+  const formatName = raw.taxonomy?.Format?.[0]?.name;
+  if (typeof formatName === "string" && /^(Manhwa|Manhua|Manga)$/i.test(formatName)) {
+    return formatName.charAt(0).toUpperCase() + formatName.slice(1).toLowerCase();
+  }
+
+  return countryId ? getShinigamiTypeFromCountry(countryId) : "Manga";
+}
+
+function getShinigamiStatusText(status: number): string {
+  if (status === 1) return "Ongoing";
+  if (status === 2) return "Completed";
+  if (status === 3) return "Hiatus";
+  return "Unknown";
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function transformShinigamiComic(raw: any): Comic {
+  return {
+    title: raw.title || "",
+    image: raw.cover_image_url || "",
+    href: raw.manga_id ? `/manga/${raw.manga_id}` : "",
+    type: resolveShinigamiComicType(raw),
+    chapter: raw.latest_chapter_number ? `Chapter ${raw.latest_chapter_number}` : undefined,
+    rating: raw.user_rate || undefined,
+    description: raw.description,
+    genre: raw.taxonomy?.Genre?.map((genre: { name: string }) => genre.name).join(", "),
+    status: getShinigamiStatusText(raw.status),
+    author: raw.taxonomy?.Author?.map((author: { name: string }) => author.name).join(", "),
+    view_count: raw.view_count || undefined,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function transformShinigamiGenres(raw: any[]): Genre[] {
+  return raw.map((genre) => ({ title: genre.name, href: `/genre/${genre.slug}` }));
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function transformShinigamiChapterData(raw: any): ChapterData {
+  const baseUrl = raw.base_url || "https://assets.shngm.id";
+  const path = raw.chapter?.path || "";
+  return {
+    title: raw.chapter_title || `Chapter ${raw.chapter_number || ""}`.trim(),
+    panel: (raw.chapter?.data || []).map((file: string) => `${baseUrl}${path}${file}`),
+  };
+}
+
+function transformShinigamiPagination(meta: { page?: number; total_page?: number } | undefined) {
+  const currentPage = meta?.page || 1;
+  const totalPage = meta?.total_page || 1;
+  return {
+    current_page: currentPage,
+    length_page: totalPage,
+    has_next: currentPage < totalPage,
+    has_prev: currentPage > 1,
+  };
+}
+
+async function fetchShinigamiJson(path: string, query?: URLSearchParams) {
+  const requestUrl = `${SHINIGAMI_API_BASE}${path}${query && query.toString() ? `?${query.toString()}` : ""}`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+  try {
+    const res = await fetch(requestUrl, {
+      signal: controller.signal,
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) throw new Error(`Shinigami direct error: ${res.status}`);
+    return res.json();
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function fetchDirectShinigami<T>(endpoint: string): Promise<ApiResponse<T>> {
+  const route = getRouteName(endpoint);
+  const slug = getEndpointSlug(endpoint);
+  const query = getEndpointQuery(endpoint);
+
+  switch (route) {
+    case "terbaru": {
+      const result = await fetchShinigamiJson("/manga/list", new URLSearchParams({
+        page: query.get("page") || "1",
+        page_size: "20",
+        sort: "latest",
+        sort_order: "desc",
+      }));
+      if (result?.retcode !== 0) throw new Error("Failed to fetch latest from Shinigami");
+      return {
+        status: "success",
+        data: (result.data || []).map(transformShinigamiComic) as T,
+        ...transformShinigamiPagination(result.meta),
+      };
+    }
+
+    case "popular": {
+      const result = await fetchShinigamiJson("/manga/top", new URLSearchParams({ page: "1", page_size: "30" }));
+      if (result?.retcode !== 0) throw new Error("Failed to fetch popular from Shinigami");
+      return { status: "success", data: (result.data || []).map(transformShinigamiComic) as T };
+    }
+
+    case "recommended": {
+      const result = await fetchShinigamiJson("/manga/list", new URLSearchParams({
+        page: "1",
+        page_size: "30",
+        sort: "latest",
+        sort_order: "desc",
+        is_recommended: "true",
+      }));
+      if (result?.retcode !== 0) throw new Error("Failed to fetch recommendations from Shinigami");
+      return { status: "success", data: (result.data || []).map(transformShinigamiComic) as T };
+    }
+
+    case "search": {
+      const keyword = query.get("keyword") || "";
+      if (!keyword) throw new Error("Parameter 'keyword' diperlukan");
+      const result = await fetchShinigamiJson("/manga/list", new URLSearchParams({
+        page: "1",
+        page_size: "30",
+        sort: "latest",
+        sort_order: "desc",
+        q: keyword,
+      }));
+      if (result?.retcode !== 0) throw new Error("Failed to search Shinigami");
+      return { status: "success", data: (result.data || []).map(transformShinigamiComic) as T };
+    }
+
+    case "genre": {
+      if (slug) {
+        const result = await fetchShinigamiJson("/manga/list", new URLSearchParams({
+          page: query.get("page") || "1",
+          page_size: "20",
+          sort: "latest",
+          sort_order: "desc",
+          genre: slug,
+        }));
+        if (result?.retcode !== 0) throw new Error("Failed to fetch Shinigami genre comics");
+        return {
+          status: "success",
+          data: (result.data || []).map(transformShinigamiComic) as T,
+          ...transformShinigamiPagination(result.meta),
+        };
+      }
+
+      const result = await fetchShinigamiJson("/genre/list");
+      if (result?.retcode !== 0) throw new Error("Failed to fetch Shinigami genres");
+      return { status: "success", data: transformShinigamiGenres(result.data || []) as T };
+    }
+
+    case "read": {
+      if (!slug) throw new Error("Slug required");
+      const result = await fetchShinigamiJson(`/chapter/detail/${encodeURIComponent(slug)}`);
+      if (result?.retcode !== 0) throw new Error("Failed to fetch Shinigami chapter");
+      return { status: "success", data: [transformShinigamiChapterData(result.data)] as T };
+    }
+
+    default:
+      throw new Error(`Unsupported direct Shinigami route: ${route}`);
+  }
+}
+
+async function fetchApiNetwork<T>(endpoint: string, provider: string): Promise<ApiResponse<T>> {
+  const url = buildUrl(endpoint, provider);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+  try {
+    const authHeaders = await generateAuthHeaders();
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { ...authHeaders },
+    });
+    if (res.status === 429) throw new Error("Terlalu banyak permintaan. Coba lagi nanti.");
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    return res.json();
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function fetchShinigamiWithFallback<T>(endpoint: string): Promise<ApiResponse<T>> {
+  try {
+    return await fetchDirectShinigami<T>(endpoint);
+  } catch {
+    return fetchApiNetwork<T>(endpoint, "shinigami");
+  }
+}
 
 async function fetchApi<T>(endpoint: string): Promise<ApiResponse<T>> {
   return fetchApiWithProvider<T>(endpoint, currentProvider);
@@ -187,25 +597,32 @@ async function fetchApiWithProvider<T>(endpoint: string, provider: string): Prom
   const cached = getCached<ApiResponse<T>>(cacheKey);
   if (cached) return cached;
 
+  const persisted = getPersistentCached<ApiResponse<T>>(cacheKey);
+  if (persisted) {
+    setCache(cacheKey, persisted.data, persisted.remainingTtl || getCachePolicy(endpoint).ttl);
+    return persisted.data;
+  }
+
   if (inflight.has(cacheKey)) return inflight.get(cacheKey) as Promise<ApiResponse<T>>;
 
   const promise = (async () => {
-    const url = buildUrl(endpoint, provider);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+    const policy = getCachePolicy(endpoint);
+    const stale = getPersistentCached<ApiResponse<T>>(cacheKey, true)?.data;
+
     try {
-      const authHeaders = await generateAuthHeaders();
-      const res = await fetch(url, {
-        signal: controller.signal,
-        headers: { ...authHeaders },
-      });
-      if (res.status === 429) throw new Error("Terlalu banyak permintaan. Coba lagi nanti.");
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const data: ApiResponse<T> = await res.json();
-      setCache(cacheKey, data);
+      const data = provider === "shinigami" && canUseDirectShinigami(endpoint)
+        ? await fetchShinigamiWithFallback<T>(endpoint)
+        : await fetchApiNetwork<T>(endpoint, provider);
+      setCache(cacheKey, data, policy.ttl);
+      setPersistentCache(cacheKey, data, policy);
       return data;
+    } catch (error) {
+      if (stale) {
+        setCache(cacheKey, stale, 30 * 1000);
+        return stale;
+      }
+      throw error;
     } finally {
-      clearTimeout(timeoutId);
       inflight.delete(cacheKey);
     }
   })();
