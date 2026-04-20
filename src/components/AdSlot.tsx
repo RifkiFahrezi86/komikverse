@@ -9,6 +9,11 @@ interface AdSlotProps {
 }
 
 export default function AdSlot({ slot, className = "" }: AdSlotProps) {
+  // TEMP DISABLED: April 20-30, 2026 - Neon compute exhausted + Edge Requests full
+  // Only cache ads work, no new tracking/revenue anyway. Re-enable after fixes.
+  return null;
+
+  // eslint-disable-next-line unreachable-code
   const { isAdFree } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
