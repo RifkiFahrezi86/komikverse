@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from "react";
-import { Link } from "react-router-dom";
-import { ChevronRight, ChevronLeft, TrendingUp, Sparkles, Clock, Play, Trash2, Heart } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ChevronRight, ChevronLeft, TrendingUp, Sparkles, Clock, Play, Trash2, Heart, Loader2 } from "lucide-react";
 import type { Comic } from "../lib/api";
 import { getPopular, getLatest, getRecommended, getComicsByGenre } from "../lib/api";
 import { getContinueReading, deleteComicFromHistory, getReadingStats } from "../lib/history";
+import { buildReaderState } from "../lib/readerState";
 import ComicCard, { UpdateCard, RecommendCard } from "../components/ComicCard";
 import ComicCardSkeleton, { UpdateCardSkeleton, RecommendCardSkeleton } from "../components/ComicCardSkeleton";
 import AdSlot from "../components/AdSlot";
@@ -104,6 +105,7 @@ function HorizontalScroller({ children }: { children: React.ReactNode }) {
 }
 
 export default function HomePage() {
+  const navigate = useNavigate();
   const [popular, setPopular] = useState<Comic[]>([]);
   const [latest, setLatest] = useState<Comic[]>([]);
   const [recommended, setRecommended] = useState<Comic[]>([]);
@@ -111,7 +113,23 @@ export default function HomePage() {
   const [recTab, setRecTab] = useState("all");
   const [popTab, setPopTab] = useState("all");
   const [continueList, setContinueList] = useState(() => getContinueReading());
+  const [continueLoadingSlug, setContinueLoadingSlug] = useState<string | null>(null);
   const [genreRecs, setGenreRecs] = useState<{ genre: string; comics: Comic[] }[]>([]);
+
+  const handleContinueClick = async (e: React.MouseEvent<HTMLAnchorElement>, item: ReturnType<typeof getContinueReading>[number]) => {
+    e.preventDefault();
+    if (continueLoadingSlug === item.comicSlug) return;
+
+    setContinueLoadingSlug(item.comicSlug);
+    const readerState = await buildReaderState({
+      comicSlug: item.comicSlug,
+      comicTitle: item.comicTitle,
+      comicImage: item.comicImage,
+      comicType: item.comicType,
+    });
+    navigate(`/baca/${item.chapterSlug}`, { state: readerState });
+    setContinueLoadingSlug(null);
+  };
 
   // Fetch genre-based recommendations from user's reading history
   useEffect(() => {
@@ -187,9 +205,15 @@ export default function HomePage() {
                   </button>
                   <Link
                     to={`/baca/${item.chapterSlug}`}
-                    state={{ comicSlug: item.comicSlug, comicTitle: item.comicTitle, comicImage: item.comicImage, comicType: item.comicType, chapters: [] }}
+                    onClick={(e) => void handleContinueClick(e, item)}
+                    className={continueLoadingSlug === item.comicSlug ? "pointer-events-none" : undefined}
                   >
                     <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2 border border-white/[0.06] bg-[#12121a]">
+                      {continueLoadingSlug === item.comicSlug && (
+                        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                          <Loader2 size={20} className="text-[#f97316] animate-spin" />
+                        </div>
+                      )}
                       {item.comicImage ? (
                         <img
                           src={item.comicImage}
@@ -226,7 +250,9 @@ export default function HomePage() {
                     <p className="text-xs font-body font-medium text-[#c0c0d0] group-hover:text-[#f97316] transition-colors truncate">
                       {item.comicTitle}
                     </p>
-                    <p className="text-[10px] font-body text-[#f97316] mt-0.5">Lanjutkan Baca →</p>
+                    <p className="text-[10px] font-body text-[#f97316] mt-0.5">
+                      {continueLoadingSlug === item.comicSlug ? "Menyiapkan chapter..." : "Lanjutkan Baca →"}
+                    </p>
                   </Link>
                 </div>
               ))}
