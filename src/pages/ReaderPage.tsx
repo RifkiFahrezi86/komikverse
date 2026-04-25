@@ -331,10 +331,6 @@ export default function ReaderPage() {
                   alt={`Panel ${i + 1}`}
                   eager={i < 3}
                 />
-                {/* Ad between images every 10 panels */}
-                {(i + 1) % 10 === 0 && i < panels.length - 1 && (
-                  <AdSlot slot="reader-between" className="my-2" />
-                )}
               </React.Fragment>
             ))}
             {/* Ad Slot - Reader Bottom */}
