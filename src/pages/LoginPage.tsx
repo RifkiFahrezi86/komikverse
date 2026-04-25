@@ -1,21 +1,26 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { BookOpen, Loader2, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../lib/auth";
 
 export default function LoginPage() {
   const { login, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const fromPath = typeof location.state === "object" && location.state && "from" in location.state
+    ? ((location.state as { from?: { pathname?: string } }).from?.pathname || "")
+    : "";
+  const redirectPath = fromPath || (user?.role === "admin" || user?.role === "owner" ? "/admin" : "/");
+
   // Redirect if already logged in
   if (user) {
-    navigate(user.role === "admin" ? "/admin" : "/", { replace: true });
-    return null;
+    return <Navigate to={redirectPath} replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,8 +28,8 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await login(username.trim(), password);
-      navigate("/");
+      const nextUser = await login(username.trim(), password);
+      navigate(fromPath || (nextUser.role === "admin" || nextUser.role === "owner" ? "/admin" : "/"), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login gagal");
     } finally {

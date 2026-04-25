@@ -6,6 +6,10 @@ import { syncStreak } from "./api";
 const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9rb21pa3ZlcnNlLWFwaS1hbWJlci52ZXJjZWwuYXBwL2FwaQ==");
 // Remove trailing /api to get base URL for auth endpoints
 const AUTH_BASE = API_BASE.replace(/\/api\/?$/, "/api");
+const EMERGENCY_ADMIN_TOKEN = "__kv_emergency_admin__";
+const EMERGENCY_ADMIN_USERNAME = String(import.meta.env.VITE_EMERGENCY_ADMIN_USERNAME || "").trim();
+const EMERGENCY_ADMIN_PASSWORD = String(import.meta.env.VITE_EMERGENCY_ADMIN_PASSWORD || "");
+const EMERGENCY_ADMIN_EMAIL = String(import.meta.env.VITE_EMERGENCY_ADMIN_EMAIL || "").trim();
 
 export interface User {
   id: number;
@@ -24,8 +28,8 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<User>;
+  register: (username: string, email: string, password: string) => Promise<User>;
   logout: () => void;
   isAdmin: boolean;
   isOwner: boolean;
@@ -64,6 +68,35 @@ async function authFetch(endpoint: string, options: RequestInit = {}) {
   return data;
 }
 
+function normalizeLogin(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function canUseEmergencyAdmin(login: string, password: string, err: unknown) {
+  if (!EMERGENCY_ADMIN_USERNAME || !EMERGENCY_ADMIN_PASSWORD) return false;
+
+  const serverUnavailable =
+    (err instanceof AuthError && (err.status === 429 || err.status >= 500)) ||
+    (err instanceof Error && err.message === "Network error");
+
+  if (!serverUnavailable || password !== EMERGENCY_ADMIN_PASSWORD) return false;
+
+  const normalizedLogin = normalizeLogin(login);
+  return normalizedLogin === normalizeLogin(EMERGENCY_ADMIN_USERNAME)
+    || (!!EMERGENCY_ADMIN_EMAIL && normalizedLogin === normalizeLogin(EMERGENCY_ADMIN_EMAIL));
+}
+
+function createEmergencyAdminUser(): User {
+  return {
+    id: -1,
+    username: EMERGENCY_ADMIN_USERNAME || "admin",
+    email: EMERGENCY_ADMIN_EMAIL || `${EMERGENCY_ADMIN_USERNAME || "admin"}@local`,
+    role: "admin",
+    ad_free: true,
+    created_at: new Date().toISOString(),
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     try {
@@ -74,13 +107,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("kv_token"));
   const [loading, setLoading] = useState(true);
 
+  const persistSession = useCallback((nextUser: User, nextToken: string) => {
+    setUser(nextUser);
+    setToken(nextToken);
+    localStorage.setItem("kv_user", JSON.stringify(nextUser));
+    localStorage.setItem("kv_token", nextToken);
+  }, []);
+
   // Validate session on mount
   useEffect(() => {
     if (!token) { setLoading(false); return; }
+    if (token === EMERGENCY_ADMIN_TOKEN) {
+      if (!user) {
+        setToken(null);
+        localStorage.removeItem("kv_user");
+        localStorage.removeItem("kv_token");
+      }
+      setLoading(false);
+      return;
+    }
     authFetch("/auth/me")
       .then((data) => {
-        setUser(data.user);
-        localStorage.setItem("kv_user", JSON.stringify(data.user));
+        persistSession(data.user, data.token || token);
         // Auto-refresh token if server returns a new one
         if (data.token) {
           setToken(data.token);
@@ -109,37 +157,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Network errors: keep user logged in with cached localStorage data
       })
       .finally(() => setLoading(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [persistSession, token, user]);
 
   const login = useCallback(async (username: string, password: string) => {
-    const data = await authFetch("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    });
-    setUser(data.user);
-    setToken(data.token);
-    localStorage.setItem("kv_user", JSON.stringify(data.user));
-    localStorage.setItem("kv_token", data.token);
-  }, []);
+    try {
+      const data = await authFetch("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      });
+      persistSession(data.user, data.token);
+      return data.user;
+    } catch (err) {
+      if (canUseEmergencyAdmin(username, password, err)) {
+        const emergencyUser = createEmergencyAdminUser();
+        persistSession(emergencyUser, EMERGENCY_ADMIN_TOKEN);
+        return emergencyUser;
+      }
+      throw err;
+    }
+  }, [persistSession]);
 
   const register = useCallback(async (username: string, email: string, password: string) => {
     const data = await authFetch("/auth/register", {
       method: "POST",
       body: JSON.stringify({ username, email, password }),
     });
-    setUser(data.user);
-    setToken(data.token);
-    localStorage.setItem("kv_user", JSON.stringify(data.user));
-    localStorage.setItem("kv_token", data.token);
-  }, []);
+    persistSession(data.user, data.token);
+    return data.user;
+  }, [persistSession]);
 
   const logout = useCallback(() => {
-    authFetch("/auth/logout", { method: "POST" }).catch(() => {});
+    if (token !== EMERGENCY_ADMIN_TOKEN) {
+      authFetch("/auth/logout", { method: "POST" }).catch(() => {});
+    }
     setUser(null);
     setToken(null);
     localStorage.removeItem("kv_user");
     localStorage.removeItem("kv_token");
-  }, []);
+  }, [token]);
 
   const value = useMemo(() => ({
     user, token, loading, login, register, logout,
