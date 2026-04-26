@@ -2,25 +2,32 @@ const API_BASE = import.meta.env.VITE_API_BASE || atob("aHR0cHM6Ly9rb21pa3ZlcnNl
 const DEFAULT_PROVIDER = import.meta.env.VITE_API_PROVIDER || "shinigami";
 const API_SECRET = import.meta.env.VITE_API_SECRET || "";
 
-// Dynamic provider management
-let currentProvider = (() => {
-  try { return localStorage.getItem("comic-provider") || DEFAULT_PROVIDER; }
-  catch { return DEFAULT_PROVIDER; }
-})();
-
 export const PROVIDERS = [
   { id: "shinigami", name: "Shinigami", icon: "🔮" },
   { id: "komiku", name: "Komiku", icon: "📚" },
-  { id: "komikapk", name: "KomikAPK", icon: "📱" },
 ] as const;
+
+type ProviderId = (typeof PROVIDERS)[number]["id"];
+const VALID_PROVIDER_IDS = new Set<string>(PROVIDERS.map((provider) => provider.id));
+
+function normalizeProvider(provider: string | null | undefined): ProviderId {
+  const normalized = (provider || DEFAULT_PROVIDER || "shinigami").toLowerCase();
+  return VALID_PROVIDER_IDS.has(normalized) ? normalized as ProviderId : "shinigami";
+}
+
+// Dynamic provider management
+let currentProvider = (() => {
+  try { return normalizeProvider(localStorage.getItem("comic-provider")); }
+  catch { return normalizeProvider(DEFAULT_PROVIDER); }
+})();
 
 export function getProvider(): string {
   return currentProvider;
 }
 
 export function setProvider(provider: string) {
-  currentProvider = provider;
-  try { localStorage.setItem("comic-provider", provider); } catch {}
+  currentProvider = normalizeProvider(provider);
+  try { localStorage.setItem("comic-provider", currentProvider); } catch {}
 }
 
 // In-memory response cache with TTL
@@ -341,7 +348,7 @@ function normalizeChapter(raw: any): Chapter {
   };
 }
 
-function buildUrl(endpoint: string, provider = currentProvider): string {
+function buildUrl(endpoint: string, provider: string = currentProvider): string {
   const separator = endpoint.includes("?") ? "&" : "?";
   return `${API_BASE}${endpoint}${separator}provider=${provider}`;
 }

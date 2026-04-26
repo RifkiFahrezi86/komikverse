@@ -18,10 +18,24 @@ import { getChapterImages, getComicDetail } from "../lib/api";
 import { recordRead } from "../lib/history";
 import AdSlot from "../components/AdSlot";
 
+const READER_DATA_SAVER_KEY = "kv_reader_data_saver";
+const READER_NAV_SCROLL_THRESHOLD = 40;
+
+function getInitialDataSaver(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const stored = localStorage.getItem(READER_DATA_SAVER_KEY);
+    if (stored !== null) return stored === "1";
+  } catch { /* ignore */ }
+
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+  return !!connection?.saveData;
+}
+
 // Preload next N images for smoother scrolling
 function useImagePreloader(panels: string[], chapterKey: string, currentIndex: number, ahead = 5) {
   useEffect(() => {
-    if (panels.length === 0) return;
+    if (panels.length === 0 || ahead <= 0) return;
     const start = Math.max(0, currentIndex);
     const end = Math.min(panels.length, start + ahead);
     const imgs: HTMLImageElement[] = [];
@@ -128,6 +142,7 @@ export default function ReaderPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("long-strip");
   const [currentPage, setCurrentPage] = useState(0);
   const [navVisible, setNavVisible] = useState(true);
+  const [dataSaver, setDataSaver] = useState(getInitialDataSaver);
   const lastScrollY = useRef(0);
   const [fetchedChapters, setFetchedChapters] = useState<Chapter[]>([]);
   const [chaptersLoading, setChaptersLoading] = useState(false);
@@ -213,9 +228,9 @@ export default function ReaderPage() {
     const onScroll = () => {
       const y = window.scrollY;
       const delta = y - lastScrollY.current;
-      if (delta > 40) {
+      if (delta > READER_NAV_SCROLL_THRESHOLD) {
         setNavVisible(false);
-      } else if (delta < -20) {
+      } else if (delta < -READER_NAV_SCROLL_THRESHOLD) {
         setNavVisible(true);
       }
       lastScrollY.current = y;
@@ -228,6 +243,12 @@ export default function ReaderPage() {
     setNavVisible(true);
   }, [slug]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(READER_DATA_SAVER_KEY, dataSaver ? "1" : "0");
+    } catch { /* ignore */ }
+  }, [dataSaver]);
+
   const toggleNav = useCallback(() => {
     setNavVisible((v) => !v);
   }, []);
@@ -239,9 +260,11 @@ export default function ReaderPage() {
   };
 
   const panels = chapterData?.panel || [];
+  const eagerPanelCount = dataSaver ? 1 : 3;
+  const preloadAhead = dataSaver ? 0 : viewMode === "single" ? 3 : 8;
 
   // Preload upcoming images (must be called before any early return)
-  useImagePreloader(panels, slug || "", viewMode === "single" ? currentPage : 0, viewMode === "single" ? 3 : 8);
+  useImagePreloader(panels, slug || "", viewMode === "single" ? currentPage : 0, preloadAhead);
 
   if (loading) {
     return (
@@ -300,6 +323,17 @@ export default function ReaderPage() {
               </Link>
             )}
             <button
+              onClick={() => setDataSaver((current) => !current)}
+              className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-body font-semibold transition-colors ${
+                dataSaver
+                  ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300"
+                  : "bg-white/[0.04] border-white/[0.06] text-[#8e8ea0] hover:text-white"
+              }`}
+              title="Kurangi preload gambar untuk menghemat kuota"
+            >
+              Hemat Data
+            </button>
+            <button
               onClick={() => setViewMode(viewMode === "long-strip" ? "single" : "long-strip")}
               className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[#8e8ea0] hover:text-[#f97316] transition-colors"
               title={viewMode === "long-strip" ? "Mode Satu Halaman" : "Mode Long Strip"}
@@ -316,6 +350,13 @@ export default function ReaderPage() {
             </span>
           </div>
         )}
+        {dataSaver && (
+          <div className="text-center pb-1.5">
+            <span className="text-[10px] font-body text-emerald-300/80">
+              Hemat data aktif: preload panel dimatikan
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Reader content */}
@@ -329,7 +370,7 @@ export default function ReaderPage() {
                 <ReaderImage
                   src={src}
                   alt={`Panel ${i + 1}`}
-                  eager={i < 3}
+                  eager={i < eagerPanelCount}
                 />
               </React.Fragment>
             ))}
