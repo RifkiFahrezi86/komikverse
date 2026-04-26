@@ -22,6 +22,33 @@ const READER_DATA_SAVER_KEY = "kv_reader_data_saver";
 const READER_NAV_HIDE_THRESHOLD = 40;
 const READER_NAV_SHOW_THRESHOLD = 80;
 const READER_NAV_MIN_DELTA = 6;
+const MOBILE_READER_NAV_HIDE_THRESHOLD = 56;
+const MOBILE_READER_NAV_SHOW_THRESHOLD = 160;
+const MOBILE_READER_NAV_MIN_DELTA = 12;
+const MOBILE_BREAKPOINT = 768;
+
+function getReaderNavThresholds() {
+  if (typeof window === "undefined") {
+    return {
+      hideThreshold: READER_NAV_HIDE_THRESHOLD,
+      showThreshold: READER_NAV_SHOW_THRESHOLD,
+      minDelta: READER_NAV_MIN_DELTA,
+    };
+  }
+
+  const isMobile = window.innerWidth < MOBILE_BREAKPOINT;
+  return isMobile
+    ? {
+        hideThreshold: MOBILE_READER_NAV_HIDE_THRESHOLD,
+        showThreshold: MOBILE_READER_NAV_SHOW_THRESHOLD,
+        minDelta: MOBILE_READER_NAV_MIN_DELTA,
+      }
+    : {
+        hideThreshold: READER_NAV_HIDE_THRESHOLD,
+        showThreshold: READER_NAV_SHOW_THRESHOLD,
+        minDelta: READER_NAV_MIN_DELTA,
+      };
+}
 
 function getInitialDataSaver(): boolean {
   if (typeof window === "undefined") return false;
@@ -229,6 +256,7 @@ export default function ReaderPage() {
 
   useEffect(() => {
     if (viewMode !== "long-strip") return;
+    const { hideThreshold, showThreshold, minDelta } = getReaderNavThresholds();
     lastScrollY.current = window.scrollY;
     scrollDirection.current = null;
     scrollTravel.current = 0;
@@ -237,7 +265,7 @@ export default function ReaderPage() {
       const y = window.scrollY;
       const delta = y - lastScrollY.current;
 
-      if (Math.abs(delta) < READER_NAV_MIN_DELTA) {
+      if (Math.abs(delta) < minDelta) {
         lastScrollY.current = y;
         return;
       }
@@ -250,10 +278,10 @@ export default function ReaderPage() {
 
       scrollTravel.current += Math.abs(delta);
 
-      if (nextDirection === "down" && navVisible && scrollTravel.current >= READER_NAV_HIDE_THRESHOLD) {
+      if (nextDirection === "down" && navVisible && scrollTravel.current >= hideThreshold) {
         setNavVisible(false);
         scrollTravel.current = 0;
-      } else if (nextDirection === "up" && !navVisible && scrollTravel.current >= READER_NAV_SHOW_THRESHOLD) {
+      } else if (nextDirection === "up" && !navVisible && scrollTravel.current >= showThreshold) {
         setNavVisible(true);
         scrollTravel.current = 0;
       }
