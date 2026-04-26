@@ -19,7 +19,9 @@ import { recordRead } from "../lib/history";
 import AdSlot from "../components/AdSlot";
 
 const READER_DATA_SAVER_KEY = "kv_reader_data_saver";
-const READER_NAV_SCROLL_THRESHOLD = 40;
+const READER_NAV_HIDE_THRESHOLD = 40;
+const READER_NAV_SHOW_THRESHOLD = 80;
+const READER_NAV_MIN_DELTA = 6;
 
 function getInitialDataSaver(): boolean {
   if (typeof window === "undefined") return false;
@@ -144,6 +146,8 @@ export default function ReaderPage() {
   const [navVisible, setNavVisible] = useState(true);
   const [dataSaver, setDataSaver] = useState(getInitialDataSaver);
   const lastScrollY = useRef(0);
+  const scrollDirection = useRef<"up" | "down" | null>(null);
+  const scrollTravel = useRef(0);
   const [fetchedChapters, setFetchedChapters] = useState<Chapter[]>([]);
   const [chaptersLoading, setChaptersLoading] = useState(false);
 
@@ -225,19 +229,41 @@ export default function ReaderPage() {
 
   useEffect(() => {
     if (viewMode !== "long-strip") return;
+    lastScrollY.current = window.scrollY;
+    scrollDirection.current = null;
+    scrollTravel.current = 0;
+
     const onScroll = () => {
       const y = window.scrollY;
       const delta = y - lastScrollY.current;
-      if (delta > READER_NAV_SCROLL_THRESHOLD) {
-        setNavVisible(false);
-      } else if (delta < -READER_NAV_SCROLL_THRESHOLD) {
-        setNavVisible(true);
+
+      if (Math.abs(delta) < READER_NAV_MIN_DELTA) {
+        lastScrollY.current = y;
+        return;
       }
+
+      const nextDirection = delta > 0 ? "down" : "up";
+      if (scrollDirection.current !== nextDirection) {
+        scrollDirection.current = nextDirection;
+        scrollTravel.current = 0;
+      }
+
+      scrollTravel.current += Math.abs(delta);
+
+      if (nextDirection === "down" && navVisible && scrollTravel.current >= READER_NAV_HIDE_THRESHOLD) {
+        setNavVisible(false);
+        scrollTravel.current = 0;
+      } else if (nextDirection === "up" && !navVisible && scrollTravel.current >= READER_NAV_SHOW_THRESHOLD) {
+        setNavVisible(true);
+        scrollTravel.current = 0;
+      }
+
       lastScrollY.current = y;
     };
+
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [viewMode]);
+  }, [navVisible, viewMode]);
 
   useEffect(() => {
     setNavVisible(true);
